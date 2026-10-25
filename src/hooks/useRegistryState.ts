@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { RegistryCategory, BookmarkItem } from '../types';
 
 export interface RegistryState {
+  view: 'home' | 'workspace';
   region: string;
   version: string;
   category: RegistryCategory;
@@ -18,6 +19,19 @@ export interface RegistryState {
 export function useRegistryState() {
   const readUrlState = useCallback((): RegistryState => {
     const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view');
+    const hasCategory = params.has('category');
+    const hasId = params.has('id');
+    const hasQ = params.has('q');
+
+    // Default to home if no specific entity or category query is present
+    let view: 'home' | 'workspace' = 'home';
+    if (viewParam === 'workspace' || viewParam === 'home') {
+      view = viewParam;
+    } else if (hasCategory || hasId || hasQ) {
+      view = 'workspace';
+    }
+
     const category = (params.get('category') as RegistryCategory) || 'equips';
     const region = params.get('region') || 'MCW';
     const version = params.get('version') || '1';
@@ -32,6 +46,7 @@ export function useRegistryState() {
     const searchQuery = params.get('q') || '';
 
     return {
+      view,
       region,
       version,
       category,
@@ -62,16 +77,19 @@ export function useRegistryState() {
 
         debounceTimerRef.current = setTimeout(() => {
           const params = new URLSearchParams();
+          if (next.view) params.set('view', next.view);
           if (next.region) params.set('region', next.region);
           if (next.version) params.set('version', next.version);
-          if (next.category) params.set('category', next.category);
-          if (next.group) params.set('group', next.group);
-          if (next.subCategory) params.set('sub', next.subCategory);
-          if (next.selectedId) params.set('id', next.selectedId.toString());
-          if (next.activeTab && next.activeTab !== 'overview') params.set('tab', next.activeTab);
-          if (next.filterPill && next.filterPill !== 'All') params.set('filter', next.filterPill);
-          if (next.sortBy && next.sortBy !== 'name') params.set('sort', next.sortBy);
-          if (next.sortDirection && next.sortDirection !== 'asc') params.set('dir', next.sortDirection);
+          if (next.view === 'workspace') {
+            if (next.category) params.set('category', next.category);
+            if (next.group) params.set('group', next.group);
+            if (next.subCategory) params.set('sub', next.subCategory);
+            if (next.selectedId) params.set('id', next.selectedId.toString());
+            if (next.activeTab && next.activeTab !== 'overview') params.set('tab', next.activeTab);
+            if (next.filterPill && next.filterPill !== 'All') params.set('filter', next.filterPill);
+            if (next.sortBy && next.sortBy !== 'name') params.set('sort', next.sortBy);
+            if (next.sortDirection && next.sortDirection !== 'asc') params.set('dir', next.sortDirection);
+          }
           if (next.searchQuery) params.set('q', next.searchQuery);
 
           const queryStr = params.toString();

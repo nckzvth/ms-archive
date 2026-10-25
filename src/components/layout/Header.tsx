@@ -13,6 +13,9 @@ interface HeaderProps {
   bookmarkCount: number;
   inspectorOpen: boolean;
   onToggleInspector: () => void;
+  currentView?: 'home' | 'workspace';
+  onNavigateHome?: () => void;
+  onNavigateWorkspace?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,6 +29,9 @@ export const Header: React.FC<HeaderProps> = ({
   bookmarkCount,
   inspectorOpen,
   onToggleInspector,
+  currentView = 'workspace',
+  onNavigateHome,
+  onNavigateWorkspace,
 }) => {
   const getWzPackageName = (cat: RegistryCategory): string => {
     switch (cat) {
@@ -52,19 +58,6 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  // Group versions by region
-  const groupedVersions = React.useMemo(() => {
-    const map = new Map<string, string[]>();
-    availableVersions.forEach((v) => {
-      const existing = map.get(v.region) || [];
-      if (!existing.includes(v.mapleVersionId)) {
-        existing.push(v.mapleVersionId);
-        map.set(v.region, existing);
-      }
-    });
-    return map;
-  }, [availableVersions]);
-
   return (
     <header className="h-10 bg-surface/90 backdrop-blur-xl z-30 shadow-[0_1px_0_rgba(0,0,0,0.06)] flex items-center justify-between px-space-lg select-none flex-shrink-0 w-full border-b border-outline-variant/20">
       {/* Left: Window controls and Navigation Breadcrumbs */}
@@ -78,14 +71,20 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Dynamic WZ Breadcrumbs */}
         <div className="flex items-center gap-space-xs text-on-surface-variant font-code text-code">
-          <span className="text-primary font-headline-sm flex items-center gap-1.5">
+          <button
+            onClick={onNavigateHome}
+            className="text-primary font-headline-sm flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer"
+            title="Return to Home"
+          >
             <Archive className="w-3.5 h-3.5 text-amber-500" />
             <span className="font-semibold tracking-tight">MS//Archive</span>
-          </span>
+          </button>
           <span>/</span>
           <span className="text-on-surface font-medium">v{version}</span>
           <span>/</span>
-          <span className="text-on-surface font-medium">{getWzPackageName(category)}</span>
+          <span className="text-on-surface font-medium">
+            {currentView === 'home' ? 'Home' : getWzPackageName(category)}
+          </span>
         </div>
 
         <div className="h-3 w-px bg-surface-container-highest" />
@@ -106,9 +105,34 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="h-3 w-px bg-surface-container-highest" />
-        <span className="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-code text-code text-[11px]">
-          Read-Only
-        </span>
+
+        {/* Seamless View Switcher Pill */}
+        <div className="flex items-center bg-surface-container rounded-lg p-0.5 border border-outline-variant/30">
+          <button
+            onClick={onNavigateHome}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+              currentView === 'home'
+                ? 'bg-surface-container-lowest text-on-surface shadow-xs font-semibold'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+            title="Return to Home Search & Directory"
+          >
+            <Home className="w-3 h-3 text-amber-500" />
+            <span className="hidden sm:inline">Home</span>
+          </button>
+          <button
+            onClick={onNavigateWorkspace}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+              currentView === 'workspace'
+                ? 'bg-surface-container-lowest text-on-surface shadow-xs font-semibold'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+            title="Open 3-Pane Explorer Workspace"
+          >
+            <LayoutGrid className="w-3 h-3 text-amber-500" />
+            <span className="hidden sm:inline">Explorer</span>
+          </button>
+        </div>
       </div>
 
       {/* Right: Search, Actions, Bookmarks */}
@@ -116,11 +140,11 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Global ⌘K Trigger Button */}
         <button
           onClick={onOpenCommandPalette}
-          className="flex items-center gap-space-md bg-surface-container-low hover:bg-surface-container px-space-md py-1 rounded-lg text-on-surface-variant hover:text-on-surface border border-outline-variant/20 transition-colors shadow-xs"
+          className="flex items-center gap-space-md bg-surface-container-low hover:bg-surface-container px-space-md py-1 rounded-lg text-on-surface-variant hover:text-on-surface border border-outline-variant/20 transition-colors shadow-xs cursor-pointer"
           title="Search across all entities (⌘K)"
         >
           <Search className="w-3.5 h-3.5" />
-          <span className="font-body-sm text-body-sm hidden sm:inline">
+          <span className="font-body-sm text-body-sm hidden md:inline">
             Search strings, IDs, tags...
           </span>
           <kbd className="px-1.5 py-0.5 bg-surface-container-lowest rounded text-on-surface font-code text-code shadow-xs border border-outline-variant/30 text-[10px]">
@@ -133,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Bookmarks Drawer Trigger */}
           <button
             onClick={onOpenBookmarks}
-            className="p-1 rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors relative"
+            className="p-1 rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors relative cursor-pointer"
             title="Saved Bookmarks"
           >
             <Bookmark className="w-4 h-4" />
@@ -145,17 +169,19 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Toggle Inspector Pane */}
-          <button
-            onClick={onToggleInspector}
-            className={`p-1 rounded-lg transition-colors ${
-              inspectorOpen
-                ? 'hover:bg-surface-container hover:text-on-surface'
-                : 'bg-surface-container text-primary font-bold'
-            }`}
-            title="Toggle Right Inspector"
-          >
-            {inspectorOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-          </button>
+          {currentView === 'workspace' && (
+            <button
+              onClick={onToggleInspector}
+              className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                inspectorOpen
+                  ? 'hover:bg-surface-container hover:text-on-surface'
+                  : 'bg-surface-container text-primary font-bold'
+              }`}
+              title="Toggle Right Inspector"
+            >
+              {inspectorOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+            </button>
+          )}
         </div>
 
         <div className="h-4 w-px bg-surface-container-highest" />

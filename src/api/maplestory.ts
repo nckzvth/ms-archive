@@ -42,7 +42,7 @@ async function fetchWithIdbCache<T>(
   fetcher: () => Promise<T>,
   ttlMs = 24 * 60 * 60 * 1000 // 24 hours
 ): Promise<T> {
-  const versionedKey = `ms_v4_${key}`;
+  const versionedKey = `ms_v5_dedupe_${key}`;
   try {
     const cached = await get<{ data: T; timestamp: number }>(versionedKey);
     if (cached && Date.now() - cached.timestamp < ttlMs) {
@@ -148,7 +148,15 @@ export async function fetchItems(
       const res = await fetchWithTimeout(url, 6000);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) return data;
+        if (Array.isArray(data)) {
+          const seenIds = new Set<number>();
+          return data.filter((item) => {
+            if (!item || item.id === undefined || item.id === null) return false;
+            if (seenIds.has(item.id)) return false;
+            seenIds.add(item.id);
+            return true;
+          });
+        }
       }
     } catch (err) {
       console.warn('Items fetch error:', err);
@@ -214,7 +222,16 @@ export async function fetchMobs(
       const res = await fetchWithTimeout(`${BASE_URL}/${region}/${version}/mob`, 8000);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data;
+        if (Array.isArray(data) && data.length > 0) {
+          const seen = new Set<string>();
+          return data.filter((mob) => {
+            if (!mob || !mob.name) return false;
+            const norm = `${mob.name.trim().toLowerCase()}_${mob.level || 0}`;
+            if (seen.has(norm)) return false;
+            seen.add(norm);
+            return true;
+          });
+        }
       }
     } catch (err) {
       console.warn('Mobs fetch error, using resilient seed fallback:', err);
@@ -275,7 +292,16 @@ export async function fetchMaps(
       const res = await fetchWithTimeout(`${BASE_URL}/${region}/${version}/map`, 8000);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data;
+        if (Array.isArray(data) && data.length > 0) {
+          const seen = new Set<string>();
+          return data.filter((map) => {
+            if (!map || !map.id || !map.name) return false;
+            const key = `${map.name.trim().toLowerCase()}_${(map.streetName || '').trim().toLowerCase()}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        }
       }
     } catch (err) {
       console.warn('Maps fetch error, using resilient seed fallback:', err);
@@ -368,18 +394,29 @@ export async function fetchQuests(
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          let lastLevel = 1;
-          return data.map((q) => {
+          const seen = new Set<string>();
+          const cleanedQuests: QuestSummary[] = [];
+
+          for (const q of data) {
+            if (!q || !q.id || !q.name) continue;
+            const norm = q.name.trim().toLowerCase();
+            // Strict deduplication by normalized name (eliminates repetitive internal donation dummy quests)
+            if (seen.has(norm)) continue;
+            seen.add(norm);
+
             const lvl =
-              q.minLevel !== undefined && q.minLevel !== null
+              q.minLevel !== undefined && q.minLevel !== null && !isNaN(Number(q.minLevel))
                 ? Number(q.minLevel)
-                : lastLevel;
-            lastLevel = lvl;
-            return {
-              ...q,
+                : 1;
+
+            cleanedQuests.push({
+              id: q.id,
+              name: q.name,
               minLevel: lvl,
-            };
-          });
+            });
+          }
+
+          return cleanedQuests;
         }
       }
     } catch (err) {

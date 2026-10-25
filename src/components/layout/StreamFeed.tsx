@@ -58,6 +58,8 @@ interface StreamFeedProps {
   version: string;
   isLoading: boolean;
   onSelectCategory?: (category: RegistryCategory, subCategory?: string, group?: string, filterPill?: string) => void;
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
 }
 
 export function getCategoryFilterPills(category: RegistryCategory): string[] {
@@ -167,22 +169,32 @@ export const StreamFeed: React.FC<StreamFeedProps> = ({
   version,
   isLoading,
   onSelectCategory,
+  searchQuery = '',
+  onSearchQueryChange,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
-  const [localSearch, setLocalSearch] = useState('');
+  const [localSearch, setLocalSearch] = useState(searchQuery);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
 
-  // Reset local search and scroll when category or subcategory changes
+  // Sync external searchQuery prop if it updates
   useEffect(() => {
-    setLocalSearch('');
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  // Reset local search and scroll when category or subcategory changes (unless searchQuery was set)
+  useEffect(() => {
+    if (!searchQuery) {
+      setLocalSearch('');
+    }
     if (parentRef.current) {
       parentRef.current.scrollTop = 0;
     }
-  }, [category, subCategory]);
+  }, [category, subCategory, searchQuery]);
 
   // Reset scroll whenever filter pill or search query changes to prevent virtualizer offset void
   const handleSearchChange = (value: string) => {
     setLocalSearch(value);
+    onSearchQueryChange?.(value);
     if (parentRef.current) {
       parentRef.current.scrollTop = 0;
     }

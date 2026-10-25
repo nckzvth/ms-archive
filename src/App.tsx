@@ -20,6 +20,7 @@ import { Header } from './components/layout/Header';
 import { SidebarTree } from './components/layout/SidebarTree';
 import { StreamFeed, FeedEntity } from './components/layout/StreamFeed';
 import { InspectorVitrine } from './components/layout/InspectorVitrine';
+import { HomePage } from './components/home/HomePage';
 import { CommandPalette } from './components/common/CommandPalette';
 import { BookmarksDrawer } from './components/common/BookmarksDrawer';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -254,38 +255,80 @@ export const App: React.FC = () => {
     };
   }, [rawItems, rawMobs, rawMaps, rawNpcs, rawQuests, state.category]);
 
-  // Transform active items for StreamFeed safely
+  // Transform active items for StreamFeed safely with strict deduplication
   const feedItems: FeedEntity[] = useMemo(() => {
     if (state.category === 'all') {
       const allList: FeedEntity[] = [];
+      const seenIds = new Set<string>();
+
+      const addEntity = (entity: FeedEntity) => {
+        const key = `${entity.entityType}_${entity.id}`;
+        if (!seenIds.has(key)) {
+          seenIds.add(key);
+          allList.push(entity);
+        }
+      };
+
       if (Array.isArray(rawItems)) {
-        rawItems.filter(Boolean).forEach((item) => allList.push({ ...item, entityType: 'item' as const }));
+        rawItems.filter(Boolean).forEach((item) => addEntity({ ...item, entityType: 'item' as const }));
       }
       if (Array.isArray(rawMobs)) {
-        rawMobs.filter(Boolean).forEach((mob) => allList.push({ ...mob, entityType: 'mob' as const }));
+        rawMobs.filter(Boolean).forEach((mob) => addEntity({ ...mob, entityType: 'mob' as const }));
       }
       if (Array.isArray(rawMaps)) {
-        rawMaps.filter(Boolean).forEach((map) => allList.push({ ...map, entityType: 'map' as const }));
+        rawMaps.filter(Boolean).forEach((map) => addEntity({ ...map, entityType: 'map' as const }));
       }
       if (Array.isArray(rawNpcs)) {
-        rawNpcs.filter(Boolean).forEach((npc) => allList.push({ ...npc, entityType: 'npc' as const }));
+        rawNpcs.filter(Boolean).forEach((npc) => addEntity({ ...npc, entityType: 'npc' as const }));
       }
       if (Array.isArray(rawQuests)) {
-        rawQuests.filter(Boolean).forEach((quest) => allList.push({ ...quest, entityType: 'quest' as const }));
+        rawQuests.filter(Boolean).forEach((quest) => addEntity({ ...quest, entityType: 'quest' as const }));
       }
       return allList;
     }
     if (isItemCategory && Array.isArray(rawItems)) {
-      return rawItems.filter(Boolean).map((item) => ({ ...item, entityType: 'item' as const }));
+      const seen = new Set<number>();
+      return rawItems
+        .filter(Boolean)
+        .filter((item) => {
+          if (seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        })
+        .map((item) => ({ ...item, entityType: 'item' as const }));
     }
     if (state.category === 'monsters' && Array.isArray(rawMobs)) {
-      return rawMobs.filter(Boolean).map((mob) => ({ ...mob, entityType: 'mob' as const }));
+      const seen = new Set<number>();
+      return rawMobs
+        .filter(Boolean)
+        .filter((mob) => {
+          if (seen.has(mob.id)) return false;
+          seen.add(mob.id);
+          return true;
+        })
+        .map((mob) => ({ ...mob, entityType: 'mob' as const }));
     }
     if (state.category === 'maps' && Array.isArray(rawMaps)) {
-      return rawMaps.filter(Boolean).map((map) => ({ ...map, entityType: 'map' as const }));
+      const seen = new Set<number>();
+      return rawMaps
+        .filter(Boolean)
+        .filter((map) => {
+          if (seen.has(map.id)) return false;
+          seen.add(map.id);
+          return true;
+        })
+        .map((map) => ({ ...map, entityType: 'map' as const }));
     }
     if (state.category === 'npcs' && Array.isArray(rawNpcs)) {
-      return rawNpcs.filter(Boolean).map((npc) => ({ ...npc, entityType: 'npc' as const }));
+      const seen = new Set<number>();
+      return rawNpcs
+        .filter(Boolean)
+        .filter((npc) => {
+          if (seen.has(npc.id)) return false;
+          seen.add(npc.id);
+          return true;
+        })
+        .map((npc) => ({ ...npc, entityType: 'npc' as const }));
     }
     if (state.category === 'quests' && Array.isArray(rawQuests)) {
       let qList = rawQuests.filter(Boolean);
@@ -293,7 +336,15 @@ export const App: React.FC = () => {
       if (activeBand && activeBand !== 'All' && activeBand !== 'All Levels') {
         qList = qList.filter((q) => isQuestInBand(q.minLevel ?? 1, activeBand));
       }
-      return qList.map((quest) => ({ ...quest, entityType: 'quest' as const }));
+      const seen = new Set<string>();
+      const deduped: FeedEntity[] = [];
+      for (const q of qList) {
+        const norm = (q.name || '').trim().toLowerCase();
+        if (norm && seen.has(norm)) continue;
+        if (norm) seen.add(norm);
+        deduped.push({ ...q, entityType: 'quest' as const });
+      }
+      return deduped;
     }
     return [];
   }, [isItemCategory, state.category, state.subCategory, state.filterPill, rawItems, rawMobs, rawMaps, rawNpcs, rawQuests]);
@@ -440,106 +491,152 @@ export const App: React.FC = () => {
         bookmarkCount={bookmarks.length}
         inspectorOpen={inspectorOpen}
         onToggleInspector={() => setInspectorOpen((prev) => !prev)}
+        currentView={state.view}
+        onNavigateHome={() => updateState({ view: 'home' })}
+        onNavigateWorkspace={() => updateState({ view: 'workspace' })}
       />
 
-      {/* Seamless 3-Column Split View Workspace */}
-      <main className="flex-1 flex overflow-hidden w-full relative">
-        {/* Pane 1: Left Taxonomy Tree */}
-        <ErrorBoundary fallbackTitle="Taxonomy Tree">
-          <SidebarTree
-            activeCategory={state.category}
-            activeSubCategory={state.subCategory || effectiveSubCategory}
-            activeGroup={state.group}
-            onSelect={(cat, sub, grp) =>
-              updateState({
-                category: cat,
-                subCategory: sub,
-                group: grp || '',
-                filterPill: cat === 'quests' ? (sub || 'All') : 'All',
-                selectedId: null,
-                activeTab: 'overview',
-              })
-            }
-            categoryTree={categoryTree}
-            mobsCount={rawMobs.length || 101}
-            mapsCount={rawMaps.length || 318}
-            npcsCount={rawNpcs.length || 226}
-            questsCount={rawQuests.length || 316}
-            maps={rawMaps}
-            region={state.region}
-            version={state.version}
-          />
-        </ErrorBoundary>
-
-        {/* Pane 2: Middle Stream Feed (Flexible width flex-1) */}
-        <ErrorBoundary fallbackTitle="Stream Feed">
-          <StreamFeed
-            category={state.category}
-            subCategory={state.subCategory || effectiveSubCategory}
-            items={feedItems}
-            selectedId={selectedId}
-            onSelectId={(id) => updateState({ selectedId: id })}
-            filterPill={state.category === 'quests' && state.subCategory ? state.subCategory : state.filterPill}
-            onFilterPillChange={(pill) =>
-              updateState({
-                filterPill: pill,
-                subCategory: state.category === 'quests' ? (pill === 'All' ? '' : pill) : state.subCategory,
-              })
-            }
-            sortBy={state.sortBy}
-            sortDirection={state.sortDirection}
-            onToggleSort={(col) => {
-              if (state.sortBy === col) {
-                updateState({ sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc' });
-              } else {
-                updateState({ sortBy: col, sortDirection: 'asc' });
+      {state.view === 'home' ? (
+        <HomePage
+          region={state.region}
+          version={state.version}
+          mobsCount={rawMobs.length || 101}
+          mapsCount={rawMaps.length || 318}
+          npcsCount={rawNpcs.length || 226}
+          questsCount={rawQuests.length || 273}
+          onSelectCategory={(cat, sub, grp, pill) => {
+            updateState({
+              view: 'workspace',
+              category: cat,
+              subCategory: sub || '',
+              group: grp || '',
+              filterPill: pill || 'All',
+              searchQuery: '',
+              selectedId: null,
+              activeTab: 'overview',
+            });
+          }}
+          onSelectEntity={(cat, id, sub) => {
+            updateState({
+              view: 'workspace',
+              category: cat,
+              subCategory: sub || '',
+              selectedId: id,
+              searchQuery: '',
+              activeTab: 'overview',
+            });
+          }}
+          onSearch={(query) => {
+            updateState({
+              view: 'workspace',
+              category: 'all',
+              searchQuery: query,
+              selectedId: null,
+            });
+          }}
+        />
+      ) : (
+        /* Seamless 3-Column Split View Workspace */
+        <main className="flex-1 flex overflow-hidden w-full relative">
+          {/* Pane 1: Left Taxonomy Tree */}
+          <ErrorBoundary fallbackTitle="Taxonomy Tree">
+            <SidebarTree
+              activeCategory={state.category}
+              activeSubCategory={state.subCategory || effectiveSubCategory}
+              activeGroup={state.group}
+              onSelect={(cat, sub, grp) =>
+                updateState({
+                  category: cat,
+                  subCategory: sub,
+                  group: grp || '',
+                  filterPill: cat === 'quests' ? (sub || 'All') : 'All',
+                  selectedId: null,
+                  activeTab: 'overview',
+                })
               }
-            }}
-            region={state.region}
-            version={state.version}
-            isLoading={isFeedLoading}
-            onSelectCategory={(cat, sub, grp, pill) => {
-              updateState({
-                category: cat,
-                subCategory: sub || '',
-                group: grp || '',
-                filterPill: pill || 'All',
-                selectedId: null,
-                activeTab: 'overview',
-              });
-            }}
-          />
-        </ErrorBoundary>
-
-        {/* Pane 3: Right Inspector & Sprite Vitrine (Compact fixed w-[460px]) */}
-        {inspectorOpen && (
-          <ErrorBoundary fallbackTitle="Inspector Vitrine">
-            <InspectorVitrine
-              category={state.category}
-              subCategory={state.subCategory || effectiveSubCategory}
-              selectedId={selectedId}
-              selectedSummary={selectedSummary}
-              activeTab={state.activeTab}
-              onChangeTab={(t) => updateState({ activeTab: t })}
+              categoryTree={categoryTree}
+              mobsCount={rawMobs.length || 101}
+              mapsCount={rawMaps.length || 318}
+              npcsCount={rawNpcs.length || 226}
+              questsCount={rawQuests.length || 273}
+              maps={rawMaps}
               region={state.region}
               version={state.version}
-              itemDetail={itemDetail}
-              mobDetail={mobDetail}
-              mapDetail={mapDetail}
-              npcDetail={npcDetail}
-              questDetail={questDetail}
-              allMaps={rawMaps}
-              allMobs={rawMobs}
-              allQuests={rawQuests}
-              allScrolls={rawScrolls}
-              onNavigateToEntity={handleNavigateToEntity}
-              isBookmarked={selectedId ? isBookmarked(selectedId, state.category) : false}
-              onToggleBookmark={handleToggleActiveBookmark}
-              isLoading={isInspectorLoading}
             />
           </ErrorBoundary>
-        )}
-      </main>
+
+          {/* Pane 2: Middle Stream Feed (Flexible width flex-1) */}
+          <ErrorBoundary fallbackTitle="Stream Feed">
+            <StreamFeed
+              category={state.category}
+              subCategory={state.subCategory || effectiveSubCategory}
+              items={feedItems}
+              selectedId={selectedId}
+              onSelectId={(id) => updateState({ selectedId: id })}
+              filterPill={state.category === 'quests' && state.subCategory ? state.subCategory : state.filterPill}
+              onFilterPillChange={(pill) =>
+                updateState({
+                  filterPill: pill,
+                  subCategory: state.category === 'quests' ? (pill === 'All' ? '' : pill) : state.subCategory,
+                })
+              }
+              sortBy={state.sortBy}
+              sortDirection={state.sortDirection}
+              onToggleSort={(col) => {
+                if (state.sortBy === col) {
+                  updateState({ sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc' });
+                } else {
+                  updateState({ sortBy: col, sortDirection: 'asc' });
+                }
+              }}
+              region={state.region}
+              version={state.version}
+              isLoading={isFeedLoading}
+              onSelectCategory={(cat, sub, grp, pill) => {
+                updateState({
+                  category: cat,
+                  subCategory: sub || '',
+                  group: grp || '',
+                  filterPill: pill || 'All',
+                  selectedId: null,
+                  activeTab: 'overview',
+                });
+              }}
+              searchQuery={state.searchQuery}
+              onSearchQueryChange={(q) => updateState({ searchQuery: q })}
+            />
+          </ErrorBoundary>
+
+          {/* Pane 3: Right Inspector & Sprite Vitrine (Compact fixed w-[460px]) */}
+          {inspectorOpen && (
+            <ErrorBoundary fallbackTitle="Inspector Vitrine">
+              <InspectorVitrine
+                category={state.category}
+                subCategory={state.subCategory || effectiveSubCategory}
+                selectedId={selectedId}
+                selectedSummary={selectedSummary}
+                activeTab={state.activeTab}
+                onChangeTab={(t) => updateState({ activeTab: t })}
+                region={state.region}
+                version={state.version}
+                itemDetail={itemDetail}
+                mobDetail={mobDetail}
+                mapDetail={mapDetail}
+                npcDetail={npcDetail}
+                questDetail={questDetail}
+                allMaps={rawMaps}
+                allMobs={rawMobs}
+                allQuests={rawQuests}
+                allScrolls={rawScrolls}
+                onNavigateToEntity={handleNavigateToEntity}
+                isBookmarked={selectedId ? isBookmarked(selectedId, state.category) : false}
+                onToggleBookmark={handleToggleActiveBookmark}
+                isLoading={isInspectorLoading}
+              />
+            </ErrorBoundary>
+          )}
+        </main>
+      )}
 
       {/* Global ⌘K Command Palette Spotlight */}
       <CommandPalette

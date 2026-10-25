@@ -430,21 +430,58 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       <div className="flex-1 overflow-y-auto">
         {/* Interactive Vitrine Canvas Container */}
         <div className="p-space-lg flex flex-col gap-space-md border-b border-outline-variant/20 bg-surface-container-lowest/50 flex-shrink-0">
-          <SpriteCanvas
-            imageUrl={canvasImageUrl}
-            fallbackUrl={canvasFallbackUrl}
-            origin={originCoord}
-            actions={canvasActions}
-            activeAction={activeAction}
-            onSelectAction={setActiveAction}
-            nodePathLabel={`${activeAction} [${selectedId}]`}
-            bgmUrl={bgmUrl}
-            bgmTrackName={bgmTrackName}
-            isMap={effectiveCategory === 'maps'}
-            mapMinimapUrl={getMapMinimapUrl(region, version, selectedId)}
-            isMinimapMode={isMinimapMode}
-            onToggleMinimapMode={() => setIsMinimapMode(!isMinimapMode)}
-          />
+          {effectiveCategory === 'quests' ? (
+            <div className="w-full rounded-xl bg-surface-container-low/80 border border-outline-variant/30 p-4 flex flex-col gap-3 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-700 flex-shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-code text-[11px] text-outline uppercase tracking-wider block">Quest Dossier</span>
+                    <span className="font-headline-sm text-sm font-bold text-on-surface">Quest ID: {selectedId}</span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-800 font-code text-xs font-semibold tabular-nums">
+                  Req. Lv. {reqLevel}+
+                </span>
+              </div>
+
+              <div className="p-3 bg-surface-container-lowest/90 rounded-lg border border-outline-variant/20 flex flex-col gap-1.5 text-body-sm">
+                <div className="flex items-center justify-between text-[11px] font-code text-on-surface-variant">
+                  <span>Level Band:</span>
+                  <span className="font-medium text-on-surface">{getQuestBandInfo(reqLevel).label} ({getQuestBandInfo(reqLevel).group})</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-code text-on-surface-variant">
+                  <span>Classification:</span>
+                  <span className="font-medium text-on-surface">Classic Victoria &amp; Ossyria Storyline</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-code text-on-surface-variant">
+                  <span>Status:</span>
+                  <span className="font-medium text-emerald-700 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                    Verified Active in v83 / MCW
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <SpriteCanvas
+              imageUrl={canvasImageUrl}
+              fallbackUrl={canvasFallbackUrl}
+              origin={originCoord}
+              actions={canvasActions}
+              activeAction={activeAction}
+              onSelectAction={setActiveAction}
+              nodePathLabel={`${activeAction} [${selectedId}]`}
+              bgmUrl={bgmUrl}
+              bgmTrackName={bgmTrackName}
+              isMap={effectiveCategory === 'maps'}
+              mapMinimapUrl={getMapMinimapUrl(region, version, selectedId)}
+              isMinimapMode={isMinimapMode}
+              onToggleMinimapMode={() => setIsMinimapMode(!isMinimapMode)}
+            />
+          )}
 
           {/* Entity Title & Header Block */}
           <div className="flex flex-col gap-1">
