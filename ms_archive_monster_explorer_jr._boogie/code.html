@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=JetBrains+Mono:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;height:100%;overflow:hidden;}body{overscroll-behavior:none;}}::-webkit-scrollbar{display:none;}
+.disclosure-arrow { transition: transform 0.15s ease; }
+details[open] > summary .disclosure-arrow { transform: rotate(90deg); }
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "on-tertiary-fixed-variant": "#494640",
+          "on-error": "#ffffff",
+          "inverse-on-surface": "#f0f1f2",
+          "primary-fixed-dim": "#c8c5ca",
+          "secondary-fixed-dim": "#c6c5cf",
+          "outline-variant": "#c8c5cb",
+          "on-primary-fixed-variant": "#47464a",
+          "background": "#f9f9fa",
+          "on-primary-fixed": "#1b1b1e",
+          "on-primary": "#ffffff",
+          "surface-container-high": "#e8e8e9",
+          "on-secondary": "#ffffff",
+          "primary": "#000000",
+          "secondary-container": "#e3e1ec",
+          "inverse-surface": "#2f3132",
+          "on-error-container": "#93000a",
+          "tertiary-container": "#1d1b16",
+          "surface-container-highest": "#e2e2e3",
+          "secondary-fixed": "#e3e1ec",
+          "outline": "#77767b",
+          "surface-tint": "#5f5e61",
+          "primary-fixed": "#e4e1e6",
+          "on-secondary-container": "#63646c",
+          "on-background": "#1a1c1d",
+          "on-secondary-fixed": "#1a1b22",
+          "tertiary": "#000000",
+          "error-container": "#ffdad6",
+          "tertiary-fixed-dim": "#cbc6bd",
+          "surface-dim": "#dadadb",
+          "inverse-primary": "#c8c5ca",
+          "on-secondary-fixed-variant": "#46464e",
+          "on-surface-variant": "#47464b",
+          "surface-variant": "#e2e2e3",
+          "on-primary-container": "#858387",
+          "surface-container-lowest": "#ffffff",
+          "surface-container": "#eeeeef",
+          "surface": "#f9f9fa",
+          "tertiary-fixed": "#e8e2d9",
+          "primary-container": "#1b1b1e",
+          "on-tertiary-fixed": "#1d1b16",
+          "on-surface": "#1a1c1d",
+          "surface-container-low": "#f3f3f4",
+          "error": "#ba1a1a",
+          "on-tertiary-container": "#88837c",
+          "secondary": "#5d5e66",
+          "surface-bright": "#f9f9fa",
+          "on-tertiary": "#ffffff"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.125rem",
+          "lg": "0.25rem",
+          "xl": "0.5rem",
+          "full": "0.75rem"
+        },
+        "spacing": {
+          "space-lg": "0.75rem",
+          "space-xl": "1rem",
+          "space-sm": "0.25rem",
+          "space-xs": "0.125rem",
+          "gutter": "0.5rem",
+          "space-md": "0.5rem",
+          "margin": "0.75rem"
+        },
+        "fontFamily": {
+          "body-lg": ["Geist"],
+          "body-sm": ["Geist"],
+          "code": ["JetBrains Mono"],
+          "body-md": ["Geist"],
+          "label-md": ["JetBrains Mono"],
+          "label-sm": ["JetBrains Mono"],
+          "headline-lg": ["Geist"],
+          "headline-md": ["Geist"],
+          "headline-sm": ["Geist"]
+        },
+        "fontSize": {
+          "body-lg": ["0.875rem", {"lineHeight": "1.25rem", "letterSpacing": "-0.005em", "fontWeight": "400"}],
+          "body-sm": ["0.75rem", {"lineHeight": "1rem", "letterSpacing": "0.005em", "fontWeight": "400"}],
+          "code": ["0.6875rem", {"lineHeight": "0.9375rem", "letterSpacing": "-0.02em", "fontWeight": "400"}],
+          "body-md": ["0.8125rem", {"lineHeight": "1.125rem", "letterSpacing": "0", "fontWeight": "400"}],
+          "label-md": ["0.75rem", {"lineHeight": "1rem", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+          "label-sm": ["0.6875rem", {"lineHeight": "0.875rem", "letterSpacing": "0", "fontWeight": "400"}],
+          "headline-lg": ["1.25rem", {"lineHeight": "1.5rem", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+          "headline-md": ["1rem", {"lineHeight": "1.25rem", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+          "headline-sm": ["0.875rem", {"lineHeight": "1.125rem", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+        }
+      }
+    }
+  }</script></head><body class="bg-surface font-body-md text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-fixed h-screen w-screen overflow-hidden flex flex-col">
+<!-- Top Global App Header -->
+<header class="h-10 bg-surface/90 backdrop-blur-xl z-30 shadow-[0_1px_0_rgba(0,0,0,0.06)] flex items-center justify-between px-space-lg select-none flex-shrink-0 w-full">
+<div class="flex items-center gap-space-md">
+<!-- Window controls dot mock -->
+<div class="flex items-center gap-1.5 mr-2">
+<div class="w-2.5 h-2.5 rounded-full bg-outline-variant/70"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-outline-variant/70"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-outline-variant/70"></div>
+</div>
+<div class="flex items-center gap-space-xs text-on-surface-variant font-code text-code">
+<span class="text-primary font-headline-sm">MS//Archive</span>
+<span>/</span>
+<span>v83</span>
+<span>/</span>
+<span class="text-on-surface">Character.wz</span>
+</div>
+<div class="h-3 w-px bg-surface-container-highest"></div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-code text-code text-[11px]">Read-Only</span>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-md bg-surface-container-low px-space-md py-1 rounded-lg text-on-surface-variant border border-outline-variant/20">
+<span class="material-symbols-outlined text-[14px]">search</span>
+<span class="font-body-sm text-body-sm">Search strings, IDs, tags...</span>
+<kbd class="px-1.5 py-0.5 bg-surface-container-lowest rounded text-on-surface font-code text-code shadow-sm">⌘K</kbd>
+</div>
+<div class="flex items-center gap-space-xs text-on-surface-variant">
+<button aria-label="Filter View" class="p-1 rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+</button>
+<button aria-label="Toggle Inspector" class="p-1 rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">right_panel_close</span>
+</button>
+</div>
+<div class="h-4 w-px bg-surface-container-highest"></div>
+<div class="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[16px]">person</span>
+</div>
+</div>
+</header>
+<!-- Main Workspace: 3 Columns Full-Height -->
+<main class="flex-1 flex overflow-hidden w-full relative"><div class="flex flex-col w-full h-full overflow-hidden select-none text-on-surface bg-surface">
+<div class="flex-1 flex overflow-hidden w-full relative">
+<!-- PANE 1: LEFT SIDEBAR TAXONOMY TREE (240px) -->
+<aside class="w-[240px] flex-shrink-0 bg-surface-container-low border-r border-outline-variant/30 flex flex-col justify-between h-full select-none">
+<div class="flex flex-col h-full overflow-y-auto">
+<!-- Explorer Header -->
+<div class="h-9 px-space-md flex items-center justify-between border-b border-outline-variant/20 bg-surface/40">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-body-sm tracking-tight text-on-surface">Archive Hierarchy</span>
+<span class="px-1 py-0.5 rounded text-[10px] font-code bg-surface-container text-on-surface-variant font-medium">v.83 GMS</span>
+</div>
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant/70 cursor-pointer hover:text-on-surface">unfold_more</span>
+</div>
+<!-- Tree Nodes List -->
+<div class="p-1 space-y-0.5 text-body-sm font-body-sm">
+<!-- Equips (Collapsed) -->
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface-variant hover:bg-surface-container/60 cursor-pointer group">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/60 group-hover:text-on-surface">chevron_right</span>
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant/70">shield</span>
+<span class="truncate">Equips</span>
+</div>
+<span class="font-code text-[11px] text-outline">360</span>
+</div>
+<!-- Use Items (Collapsed) -->
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface-variant hover:bg-surface-container/60 cursor-pointer group">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/60 group-hover:text-on-surface">chevron_right</span>
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant/70">science</span>
+<span class="truncate">Use Items</span>
+</div>
+<span class="font-code text-[11px] text-outline">112</span>
+</div>
+<!-- Monsters Root (Expanded) -->
+<div>
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface font-headline-sm text-body-sm bg-surface-container/40 cursor-pointer">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface">expand_more</span>
+<span class="material-symbols-outlined text-[15px] text-amber-600">pest_control</span>
+<span class="truncate">Monsters</span>
+</div>
+<span class="font-code text-[10px] px-1 bg-surface-container rounded text-on-surface-variant">Active</span>
+</div>
+<!-- Victoria Island (Sub-expanded) -->
+<div class="ml-3 pl-2 border-l border-outline-variant/30 mt-0.5 space-y-0.5">
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface cursor-pointer">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+<span class="font-medium text-body-sm">Victoria Island</span>
+</div>
+</div>
+<!-- Town sub-nodes -->
+<div class="ml-3 pl-2 border-l border-outline-variant/30 space-y-0.5 text-[12px]">
+<div class="flex items-center justify-between px-2 py-0.5 rounded text-on-surface-variant hover:bg-surface-container/50 cursor-pointer">
+<span>Henesys</span>
+<span class="font-code text-outline text-[11px]">18</span>
+</div>
+<div class="flex items-center justify-between px-2 py-0.5 rounded text-on-surface-variant hover:bg-surface-container/50 cursor-pointer">
+<span>Ellinia</span>
+<span class="font-code text-outline text-[11px]">14</span>
+</div>
+<div class="flex items-center justify-between px-2 py-0.5 rounded text-on-surface-variant hover:bg-surface-container/50 cursor-pointer">
+<span>Perion</span>
+<span class="font-code text-outline text-[11px]">22</span>
+</div>
+<div class="flex items-center justify-between px-2 py-0.5 rounded text-on-surface-variant hover:bg-surface-container/50 cursor-pointer">
+<span>Kerning City</span>
+<span class="font-code text-outline text-[11px]">16</span>
+</div>
+<!-- Sleepywood: Active selected node -->
+<div class="flex items-center justify-between px-2 py-1 rounded bg-surface-container-high/90 text-on-surface font-medium cursor-pointer relative shadow-sm">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0 animate-pulse"></span>
+<span class="truncate text-on-surface font-semibold">Sleepywood</span>
+</div>
+<span class="font-code text-[11px] font-semibold text-amber-700 bg-amber-100/70 px-1 rounded">8</span>
+</div>
+</div>
+<!-- Collapsed Regions -->
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface-variant hover:bg-surface-container/50 cursor-pointer">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-outline">chevron_right</span>
+<span class="truncate">Ossyria / El Nath</span>
+</div>
+<span class="font-code text-[11px] text-outline">34</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface-variant hover:bg-surface-container/50 cursor-pointer">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-outline">chevron_right</span>
+<span class="truncate">Ludus Lake</span>
+</div>
+<span class="font-code text-[11px] text-outline">42</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface-variant hover:bg-surface-container/50 cursor-pointer">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-outline">chevron_right</span>
+<span class="truncate">Mu Lung Garden</span>
+</div>
+<span class="font-code text-[11px] text-outline">19</span>
+</div>
+</div>
+</div>
+<!-- Other Top Roots -->
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface-variant hover:bg-surface-container/60 cursor-pointer group pt-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/60 group-hover:text-on-surface">chevron_right</span>
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant/70">map</span>
+<span class="truncate">Maps</span>
+</div>
+<span class="font-code text-[11px] text-outline">480</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface-variant hover:bg-surface-container/60 cursor-pointer group">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/60 group-hover:text-on-surface">chevron_right</span>
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant/70">face</span>
+<span class="truncate">NPCs &amp; Scripts</span>
+</div>
+<span class="font-code text-[11px] text-outline">215</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded text-on-surface-variant hover:bg-surface-container/60 cursor-pointer group">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/60 group-hover:text-on-surface">chevron_right</span>
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant/70">assignment</span>
+<span class="truncate">Quests</span>
+</div>
+<span class="font-code text-[11px] text-outline">184</span>
+</div>
+</div>
+</div>
+<!-- Left Sidebar Status Base -->
+<div class="p-2 border-t border-outline-variant/30 flex items-center justify-between text-[11px] font-code text-on-surface-variant bg-surface/50">
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          WZ Sync Valid
+        </span>
+<span class="text-outline">1,403 items</span>
+</div>
+</aside>
+<!-- PANE 2: MIDDLE STREAM FEED (380px) -->
+<section class="w-[380px] flex-shrink-0 bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col h-full select-none z-10">
+<!-- Search & Filter Controls -->
+<div class="p-space-md border-b border-outline-variant/20 bg-surface/40 space-y-2">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2.5 text-[15px] text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low pl-8 pr-12 py-1 rounded text-body-sm font-body-sm border border-outline-variant/40 focus:outline-none focus:border-on-surface transition-colors" placeholder="Search monsters, levels, elements..." type="text" value="Sleepywood / Lv. 31-60"/>
+<kbd class="absolute right-2 px-1.5 py-0.5 rounded bg-surface-container-highest/80 text-[10px] font-code text-on-surface-variant">⌘K</kbd>
+</div>
+<!-- Segmented Filter Strip -->
+<div class="grid grid-cols-5 bg-surface-container rounded p-0.5 text-[11px] font-medium text-center">
+<button class="py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">All</button>
+<button class="py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">1-30</button>
+<button class="py-0.5 rounded bg-surface-container-lowest text-on-surface font-semibold shadow-xs" type="button">31-60</button>
+<button class="py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">61-99</button>
+<button class="py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">Bosses</button>
+</div>
+</div>
+<!-- Stream Column Headers -->
+<div class="h-7 px-3 flex items-center justify-between text-[11px] font-code uppercase tracking-wider text-outline bg-surface-container-low/60 border-b border-outline-variant/20">
+<div class="flex items-center gap-8">
+<span>Entity Name</span>
+<span>Level</span>
+</div>
+<span>5 Results</span>
+</div>
+<!-- Feed Rows List -->
+<div class="flex-1 overflow-y-auto divide-y divide-outline-variant/15">
+<!-- Row 1: Selected active row -> Jr. Boogie -->
+<div class="h-[54px] px-3 flex items-center justify-between bg-surface-container-low/80 border-l-[3px] border-l-amber-500 cursor-pointer relative transition-colors">
+<div class="flex items-center gap-2.5 min-w-0">
+<!-- 32x32 Pixel Sprite Container -->
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center relative overflow-hidden border border-outline-variant/30 flex-shrink-0">
+<svg class="text-purple-700 drop-shadow-sm" height="24" viewbox="0 0 24 24" width="24">
+<!-- Jr. Boogie Minimal Silhouette / Pixel Aesthetic -->
+<path d="M12 2C8 2 6 5 6 9C6 13 4 14 4 17C4 20 7 21 12 21C17 21 20 20 20 17C20 14 18 13 18 9C18 5 16 2 12 2Z" fill="currentColor"></path>
+<circle cx="10" cy="8" fill="#ef4444" r="1.5"></circle>
+<circle cx="14" cy="8" fill="#ef4444" r="1.5"></circle>
+<circle cx="17" cy="5" fill="#c084fc" r="1"></circle>
+</svg>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="text-body-md font-semibold text-on-surface truncate">Jr. Boogie</span>
+<span class="material-symbols-outlined text-[13px] text-amber-600">air</span>
+</div>
+<span class="text-[11px] text-on-surface-variant font-code">Lv. 35 • HP 1,350</span>
+</div>
+</div>
+<div class="text-right flex-shrink-0">
+<span class="font-code text-body-sm font-semibold text-on-surface tabular-nums">85</span>
+<span class="font-code text-[10px] text-outline ml-0.5">EXP</span>
+</div>
+</div>
+<!-- Row 2: Evil Eye -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-low/40 cursor-pointer transition-colors group">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center relative overflow-hidden border border-outline-variant/20 flex-shrink-0">
+<svg class="text-emerald-700" height="24" viewbox="0 0 24 24" width="24">
+<ellipse cx="12" cy="12" fill="currentColor" rx="9" ry="6"></ellipse>
+<circle cx="12" cy="12" fill="#ffffff" r="3"></circle>
+<circle cx="12" cy="12" fill="#dc2626" r="1.5"></circle>
+</svg>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="text-body-md font-medium text-on-surface group-hover:text-primary truncate">Evil Eye</span>
+<span class="text-[11px] text-on-surface-variant font-code">Lv. 27 • HP 720</span>
+</div>
+</div>
+<div class="text-right flex-shrink-0">
+<span class="font-code text-body-sm text-on-surface-variant tabular-nums">50</span>
+<span class="font-code text-[10px] text-outline ml-0.5">EXP</span>
+</div>
+</div>
+<!-- Row 3: Curse Eye -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-low/40 cursor-pointer transition-colors group">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center relative overflow-hidden border border-outline-variant/20 flex-shrink-0">
+<svg class="text-indigo-800" height="24" viewbox="0 0 24 24" width="24">
+<path d="M4 12C4 8 8 5 12 5C16 5 20 8 20 12C20 16 16 19 12 19C8 19 4 16 4 12Z" fill="currentColor"></path>
+<polygon fill="#fbbf24" points="12,7 15,14 9,14"></polygon>
+</svg>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="text-body-md font-medium text-on-surface group-hover:text-primary truncate">Curse Eye</span>
+<span class="text-[11px] text-on-surface-variant font-code">Lv. 35 • HP 1,250</span>
+</div>
+</div>
+<div class="text-right flex-shrink-0">
+<span class="font-code text-body-sm text-on-surface-variant tabular-nums">82</span>
+<span class="font-code text-[10px] text-outline ml-0.5">EXP</span>
+</div>
+</div>
+<!-- Row 4: Cold Eye -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-low/40 cursor-pointer transition-colors group">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center relative overflow-hidden border border-outline-variant/20 flex-shrink-0">
+<svg class="text-cyan-700" height="24" viewbox="0 0 24 24" width="24">
+<rect fill="currentColor" height="12" rx="3" width="14" x="5" y="6"></rect>
+<circle cx="10" cy="11" fill="#ffffff" r="1.5"></circle>
+<circle cx="14" cy="11" fill="#ffffff" r="1.5"></circle>
+</svg>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="text-body-md font-medium text-on-surface group-hover:text-primary truncate">Cold Eye</span>
+<span class="text-[11px] text-on-surface-variant font-code">Lv. 40 • HP 1,800</span>
+</div>
+</div>
+<div class="text-right flex-shrink-0">
+<span class="font-code text-body-sm text-on-surface-variant tabular-nums">105</span>
+<span class="font-code text-[10px] text-outline ml-0.5">EXP</span>
+</div>
+</div>
+<!-- Row 5: Tauromacis -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-low/40 cursor-pointer transition-colors group">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center relative overflow-hidden border border-outline-variant/20 flex-shrink-0">
+<svg class="text-stone-800" height="24" viewbox="0 0 24 24" width="24">
+<path d="M4 8L8 4L12 7L16 4L20 8L18 18L12 21L6 18Z" fill="currentColor"></path>
+<circle cx="10" cy="12" fill="#ef4444" r="1.5"></circle>
+<circle cx="14" cy="12" fill="#ef4444" r="1.5"></circle>
+</svg>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="text-body-md font-medium text-on-surface group-hover:text-primary truncate">Tauromacis</span>
+<span class="text-[9px] font-code px-1 rounded bg-red-100 text-red-700 font-bold border border-red-200">BOSS</span>
+</div>
+<span class="text-[11px] text-on-surface-variant font-code">Lv. 70 • HP 16,000</span>
+</div>
+</div>
+<div class="text-right flex-shrink-0">
+<span class="font-code text-body-sm text-on-surface-variant tabular-nums">330</span>
+<span class="font-code text-[10px] text-outline ml-0.5">EXP</span>
+</div>
+</div>
+</div>
+<!-- Feed Status Bar -->
+<div class="h-6 px-3 flex items-center justify-between text-[11px] font-code text-outline bg-surface-container-low border-t border-outline-variant/20">
+<span>Filter: Lv. 31-60</span>
+<span>Index: 1 of 5 selected</span>
+</div>
+</section>
+<!-- PANE 3: RIGHT INSPECTOR STAGE (Flex-1) -->
+<main class="flex-1 flex flex-col h-full bg-[#fcfcfd] overflow-hidden select-text">
+<!-- Breadcrumb and Quick Action Bar -->
+<div class="h-10 px-space-xl border-b border-outline-variant/30 bg-surface/50 flex items-center justify-between flex-shrink-0">
+<div class="flex items-center gap-1.5 text-body-sm font-code text-on-surface-variant truncate">
+<span class="text-outline">Mob.wz</span>
+<span>/</span>
+<span>Victoria Island</span>
+<span>/</span>
+<span>Sleepywood</span>
+<span>/</span>
+<span class="text-on-surface font-semibold">02230101.img</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-surface-container font-code text-[11px] text-on-surface font-semibold border border-outline-variant/30">ID: 2230101</span>
+<button aria-label="View XML" class="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">code</span>
+</button>
+<button aria-label="Bookmark Node" class="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">bookmark_border</span>
+</button>
+<button aria-label="Share Reference" class="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">share</span>
+</button>
+</div>
+</div>
+<!-- Inspector Scrollable Body -->
+<div class="flex-1 overflow-y-auto">
+<!-- Sprite Canvas Inspection Stage -->
+<div class="relative w-full h-[220px] bg-surface-container-lowest border-b border-outline-variant/20 overflow-hidden flex items-center justify-center">
+<!-- Precise 8px checkerboard pattern SVG background -->
+<svg class="absolute inset-0 w-full h-full opacity-35" height="100%" width="100%">
+<defs>
+<pattern height="16" id="canvas-grid" patternunits="userSpaceOnUse" width="16">
+<rect fill="#e4e4e7" height="8" width="8"></rect>
+<rect fill="#f4f4f5" height="8" width="8" x="8" y="0"></rect>
+<rect fill="#f4f4f5" height="8" width="8" x="0" y="8"></rect>
+<rect fill="#e4e4e7" height="8" width="8" x="8" y="8"></rect>
+</pattern>
+</defs>
+<rect fill="url(#canvas-grid)" height="100%" width="100%"></rect>
+</svg>
+<!-- Origin Crosshairs (0,0 point) -->
+<div class="absolute inset-x-0 top-1/2 h-px bg-rose-400/35 pointer-events-none"></div>
+<div class="absolute inset-y-0 left-1/2 w-px bg-rose-400/35 pointer-events-none"></div>
+<span class="absolute top-1/2 left-1/2 -translate-y-4 translate-x-1.5 font-code text-[10px] text-rose-500/80 font-medium">Origin: (0, 0)</span>
+<!-- Animated Sprite Illustration of Jr. Boogie with Floating Ambient Aura -->
+<div class="relative z-10 flex flex-col items-center">
+<div class="animate-bounce" style="animation-duration: 2.4s;">
+<svg class="drop-shadow-md" height="84" viewbox="0 0 100 100" width="84">
+<!-- Jr Boogie Sprite Render -->
+<defs>
+<radialgradient cx="50%" cy="50%" id="boogie-glow" r="50%">
+<stop offset="0%" stop-color="#9333ea" stop-opacity="0.6"></stop>
+<stop offset="100%" stop-color="#3b0764" stop-opacity="0"></stop>
+</radialgradient>
+</defs>
+<!-- Aura circle -->
+<circle cx="50" cy="50" fill="url(#boogie-glow)" r="42"></circle>
+<!-- Shroud Body -->
+<path d="M50 18 C32 18 24 30 24 52 C24 70 20 74 18 84 C28 88 40 82 50 85 C62 82 74 88 82 84 C80 74 76 70 76 52 C76 30 68 18 50 18 Z" fill="#1e1b4b"></path>
+<path d="M50 24 C36 24 30 34 30 54 C30 70 26 75 25 80 C34 83 44 80 50 81 C56 80 66 83 75 80 C74 75 70 70 70 54 C70 34 64 24 50 24 Z" fill="#312e81"></path>
+<!-- Glowing Sinister Red Eyes -->
+<ellipse cx="42" cy="46" fill="#ef4444" rx="4" ry="5.5"></ellipse>
+<ellipse cx="58" cy="46" fill="#ef4444" rx="4" ry="5.5"></ellipse>
+<circle cx="43" cy="45" fill="#fecaca" r="1.5"></circle>
+<circle cx="57" cy="45" fill="#fecaca" r="1.5"></circle>
+<!-- Levitating Music Note Accent -->
+<path d="M68 28 L74 26 L74 34 A2 2 0 1 1 72 32 L72 29 L68 30 Z" fill="#a855f7"></path>
+</svg>
+</div>
+<!-- Ground Foothold Shadow indicator -->
+<ellipse class="mt-[-10px]" cx="50" cy="88" fill="#000000" opacity="0.15" rx="22" ry="4"></ellipse>
+</div>
+<!-- Bottom Left: Animation State Scrubbers -->
+<div class="absolute bottom-2 left-3 flex items-center gap-1 bg-surface-container-lowest/90 backdrop-blur-md p-1 rounded-md border border-outline-variant/30 text-[11px] font-medium shadow-xs">
+<button class="px-2 py-0.5 rounded bg-primary text-on-primary font-semibold text-[10px]" type="button">Stand</button>
+<button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors text-[10px]" type="button">Move</button>
+<button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors text-[10px]" type="button">Attack1</button>
+<button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors text-[10px]" type="button">Hit</button>
+<button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors text-[10px]" type="button">Die</button>
+</div>
+<!-- Bottom Right: View Controls -->
+<div class="absolute bottom-2 right-3 flex items-center gap-1 bg-surface-container-lowest/90 backdrop-blur-md px-2 py-1 rounded-md border border-outline-variant/30 text-[11px] font-code text-on-surface shadow-xs">
+<span class="font-semibold text-on-surface">300%</span>
+<div class="w-px h-3 bg-outline-variant/50 mx-1"></div>
+<button aria-label="Toggle Origin Crosshairs" class="text-on-surface-variant hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-[14px]">grid_4x4</span>
+</button>
+</div>
+</div>
+<!-- Monster Header Block -->
+<div class="p-space-xl border-b border-outline-variant/20">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-2">
+<h1 class="text-headline-lg font-headline-lg tracking-tight text-on-surface">Jr. Boogie</h1>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-code font-semibold bg-surface-container text-on-surface-variant border border-outline-variant/30">Mob #02230101</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-0.5">
+                Monsters • Victoria Island • Sleepywood • Flying / Undetermined
+              </p>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-headline-md font-headline-md text-amber-600 font-code">Level 35</span>
+<span class="text-[11px] font-code text-outline">Normal Mob</span>
+</div>
+</div>
+<!-- Quick Vitals Pill Matrix -->
+<div class="flex flex-wrap items-center gap-1.5 mt-3">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface font-code text-[11px] border border-outline-variant/30">
+<strong class="text-outline">HP:</strong> 1,350
+            </span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface font-code text-[11px] border border-outline-variant/30">
+<strong class="text-outline">MP:</strong> 1,200
+            </span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface font-code text-[11px] border border-outline-variant/30">
+<strong class="text-outline">EXP:</strong> 85
+            </span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface font-code text-[11px] border border-outline-variant/30">
+<strong class="text-outline">KB:</strong> 1 dmg
+            </span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface font-code text-[11px] border border-outline-variant/30">
+<strong class="text-outline">Undead:</strong> No
+            </span>
+<span class="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-code text-[11px] border border-amber-200">
+              Curse Cast: Active
+            </span>
+</div>
+</div>
+<!-- Segmented Tab Navigation -->
+<div class="px-space-xl border-b border-outline-variant/20 flex items-center gap-6 text-body-sm bg-surface-container-low/30">
+<button class="py-2.5 font-headline-sm text-body-sm border-b-2 border-amber-500 text-on-surface" type="button">
+            Vitals &amp; Combat
+          </button>
+<button class="py-2.5 font-body-sm text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+            Drop Table (14)
+          </button>
+<button class="py-2.5 font-body-sm text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+            Spawn Maps (3)
+          </button>
+<button class="py-2.5 font-body-sm text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+            Related Quests (1)
+          </button>
+</div>
+<!-- Vitals Tab Content Grid (Two-Column Key-Value Tabular View) -->
+<div class="p-space-xl space-y-6">
+<div>
+<div class="font-code text-[11px] uppercase tracking-wider text-outline mb-3 font-semibold">
+              Combat Metrics &amp; Physiology
+            </div>
+<!-- Two Column Tabular Metrics -->
+<div class="grid grid-cols-2 gap-x-10 gap-y-2 text-body-sm">
+<!-- Left Column: Combat Specs -->
+<div class="space-y-2">
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Physical Attack (PAD)</span>
+<span class="font-code font-semibold text-on-surface">120</span>
+</div>
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Magic Attack (MAD)</span>
+<span class="font-code font-semibold text-on-surface">135</span>
+</div>
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Physical Defense (PDD)</span>
+<span class="font-code font-semibold text-on-surface">60</span>
+</div>
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Magic Defense (MDD)</span>
+<span class="font-code font-semibold text-on-surface">80</span>
+</div>
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Accuracy</span>
+<span class="font-code font-semibold text-on-surface">90</span>
+</div>
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Avoidability</span>
+<span class="font-code font-semibold text-on-surface">20</span>
+</div>
+</div>
+<!-- Right Column: Trait & Elemental Matrix -->
+<div class="space-y-2">
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Movement Mode</span>
+<span class="font-code font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-amber-600">flight</span>
+                    Flying (+10)
+                  </span>
+</div>
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Total Stamina Pool</span>
+<span class="font-code font-semibold text-on-surface">1,350 HP / 1,200 MP</span>
+</div>
+<div class="flex items-center justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Base EXP Yield</span>
+<span class="font-code font-semibold text-on-surface">85 EXP</span>
+</div>
+<!-- Elemental Resistances -->
+<div class="py-1 border-b border-outline-variant/20">
+<div class="flex items-center justify-between mb-1.5">
+<span class="font-code text-on-surface-variant text-[12px]">Elemental Affinities</span>
+</div>
+<div class="flex items-center gap-1.5 flex-wrap">
+<!-- Ice Weakness -->
+<span class="px-2 py-0.5 rounded text-[11px] font-code font-semibold bg-sky-500/10 text-sky-700 border border-sky-300/40">
+                      Ice: Weak ×1.5
+                    </span>
+<!-- Fire Normal -->
+<span class="px-2 py-0.5 rounded text-[11px] font-code bg-surface-container text-on-surface-variant border border-outline-variant/30">
+                      Fire: Normal
+                    </span>
+<!-- Poison Immune -->
+<span class="px-2 py-0.5 rounded text-[11px] font-code font-semibold bg-emerald-500/10 text-emerald-700 border border-emerald-300/40">
+                      Poison: Immune
+                    </span>
+<!-- Holy Normal -->
+<span class="px-2 py-0.5 rounded text-[11px] font-code bg-surface-container text-on-surface-variant border border-outline-variant/30">
+                      Holy: Normal
+                    </span>
+</div>
+</div>
+<!-- Status Effect Inflictions -->
+<div class="flex items-start justify-between py-1 border-b border-outline-variant/20">
+<span class="font-code text-on-surface-variant text-[12px]">Status Skills</span>
+<div class="text-right">
+<span class="font-code text-[12px] font-semibold text-purple-700">Curses (Seal, Weakness)</span>
+<p class="text-[10px] text-outline font-code">Cast interval: 15s • Range: 300px</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Spawning Locations Reference Strip -->
+<div class="pt-2">
+<div class="font-code text-[11px] uppercase tracking-wider text-outline mb-2 font-semibold">
+              Primary Sleepywood Habitats
+            </div>
+<div class="grid grid-cols-3 gap-2">
+<div class="p-2 rounded bg-surface-container-low border border-outline-variant/20">
+<span class="font-code text-[10px] text-outline">Map ID 105040300</span>
+<p class="text-body-sm font-medium text-on-surface truncate">The Cursed Sanctuary</p>
+<span class="font-code text-[11px] text-on-surface-variant">Spawn rate: High</span>
+</div>
+<div class="p-2 rounded bg-surface-container-low border border-outline-variant/20">
+<span class="font-code text-[10px] text-outline">Map ID 105040301</span>
+<p class="text-body-sm font-medium text-on-surface truncate">Silent Grave</p>
+<span class="font-code text-[11px] text-on-surface-variant">Spawn rate: Med</span>
+</div>
+<div class="p-2 rounded bg-surface-container-low border border-outline-variant/20">
+<span class="font-code text-[10px] text-outline">Map ID 105040302</span>
+<p class="text-body-sm font-medium text-on-surface truncate">Dungeon: Ant Tunnel IV</p>
+<span class="font-code text-[11px] text-on-surface-variant">Spawn rate: Rare</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Hairline Metadata Footer Bar -->
+<footer class="h-7 px-space-xl border-t border-outline-variant/20 bg-surface-container-low/70 flex items-center justify-between text-[11px] font-code text-on-surface-variant flex-shrink-0">
+<div class="flex items-center gap-3">
+<span>WZ Node: <strong class="text-on-surface">02230101</strong></span>
+<span>•</span>
+<span>Sound Node: <strong class="text-on-surface">Mob/02230101.img</strong></span>
+<span>•</span>
+<span>Link ID: None</span>
+</div>
+<div>
+<span>v.83 Victoria Island Patch</span>
+</div>
+</footer>
+</main>
+</div>
+</div></main>
+<!-- Vanilla JS for dynamic interactive tab switching -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-tab');
+
+        // Reset all tabs
+        tabButtons.forEach(b => {
+          b.classList.remove('border-primary', 'text-primary', 'font-headline-sm');
+          b.classList.add('border-transparent', 'text-on-surface-variant');
+        });
+
+        // Activate clicked tab
+        btn.classList.add('border-primary', 'text-primary', 'font-headline-sm');
+        btn.classList.remove('border-transparent', 'text-on-surface-variant');
+
+        // Toggle content
+        tabContents.forEach(content => {
+          if (content.id === targetId) {
+            content.classList.remove('hidden');
+          } else {
+            content.classList.add('hidden');
+          }
+        });
+      });
+    });
+  });
+</script>
+</body></html>
