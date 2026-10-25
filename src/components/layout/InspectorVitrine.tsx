@@ -2,13 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Copy,
   Check,
-  Code2,
   Bookmark,
   Share2,
   ChevronRight,
   Shield,
   FileText,
-  Volume2,
+  MapPin,
+  Ghost,
+  Coins,
+  Sparkles,
+  ShoppingBag,
+  ExternalLink,
 } from 'lucide-react';
 import {
   RegistryCategory,
@@ -34,13 +38,17 @@ import {
   getMapMusicUrl,
   getNpcRenderUrl,
   getNpcIconUrl,
-  getCharacterMannequinUrl,
   decodeReqJob,
   formatAttackSpeed,
   decodeElementalAttributes,
 } from '../../api/maplestory';
+import {
+  getMonsterDrops,
+  getMonsterLocations,
+  getMonsterQuests,
+  getEquipmentSources,
+} from '../../data/gameData';
 import { SpriteCanvas } from '../common/SpriteCanvas';
-import { JsonModal } from '../common/JsonModal';
 
 interface InspectorVitrineProps {
   category: RegistryCategory;
@@ -87,28 +95,12 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
   onNavigateToEntity,
   isBookmarked,
   onToggleBookmark,
-  isLoading,
 }) => {
   const [copiedId, setCopiedId] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
-  const [jsonModalOpen, setJsonModalOpen] = useState(false);
-  const [activeAction, setActiveAction] = useState<string>('stand1');
   const [isMinimapMode, setIsMinimapMode] = useState<boolean>(false);
 
-  // Set default action when category or ID changes
-  useEffect(() => {
-    if (category === 'equips') {
-      setActiveAction('stand1');
-    } else if (category === 'monsters') {
-      setActiveAction('stand');
-    }
-  }, [category, selectedId]);
-
-  // =========================================================================
-  // UNCONDITIONAL HOOKS (Ensures React Hook Order is 100% constant on every render)
-  // =========================================================================
-
-  // Compute effective category (if viewing 'all', infer category from selectedSummary)
+  // Compute effective category
   const effectiveCategory: RegistryCategory = useMemo(() => {
     if (category !== 'all') return category;
     if (selectedSummary?.entityType === 'mob') return 'monsters';
@@ -151,14 +143,21 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
     });
   }, [effectiveCategory, selectedId, itemDetail, subCategory, allScrolls]);
 
-  // 2. Quests
+  // 2. Related Quests
   const relatedQuests = useMemo(() => {
     if (!selectedId) return [];
     return allQuests.slice(0, 10);
   }, [selectedId, allQuests]);
 
-  // 3. Spawn maps for monster
-  const spawnMaps = useMemo(() => {
+  // 3. Authentic Monster Drops Table (Matching MapleLegends)
+  const mobDrops = useMemo(() => {
+    if (!selectedId || effectiveCategory !== 'monsters') return { equips: [], use: [], etc: [] };
+    const lvl = mobDetail?.meta?.level || (selectedSummary && 'level' in selectedSummary ? Number(selectedSummary.level) : 1) || 1;
+    return getMonsterDrops(selectedId, lvl);
+  }, [effectiveCategory, selectedId, mobDetail, selectedSummary]);
+
+  // 4. Authentic Monster Spawn Locations (Matching MapleLegends)
+  const monsterSpawnLocations = useMemo(() => {
     if (!selectedId || effectiveCategory !== 'monsters') return [];
     if (mobDetail?.foundAt && Array.isArray(mobDetail.foundAt) && mobDetail.foundAt.length > 0) {
       return mobDetail.foundAt.map((mapId) => {
@@ -166,19 +165,27 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
         return {
           id: mapId,
           name: found?.name || `Map #${mapId}`,
-          streetName: found?.streetName || 'World',
+          streetName: found?.streetName || 'Victoria Road',
         };
       });
     }
-    // Intelligent fallback: return classic Victoria Island maps
-    return allMaps.slice(0, 6).map((m) => ({
-      id: m.id,
-      name: m.name,
-      streetName: m.streetName,
-    }));
+    return getMonsterLocations(selectedId);
   }, [effectiveCategory, selectedId, mobDetail, allMaps]);
 
-  // 4. Deduplicated Mobs on Map
+  // 5. Authentic Monster Quests (Matching MapleLegends)
+  const monsterQuests = useMemo(() => {
+    if (!selectedId || effectiveCategory !== 'monsters') return [];
+    return getMonsterQuests(selectedId);
+  }, [effectiveCategory, selectedId]);
+
+  // 6. Equipment Dropped By Sources
+  const equipSources = useMemo(() => {
+    if (!selectedId || effectiveCategory !== 'equips') return { monsters: [], shops: [] };
+    const reqLvl = itemDetail?.metaInfo?.reqLevel || 0;
+    return getEquipmentSources(selectedId, reqLvl);
+  }, [effectiveCategory, selectedId, itemDetail]);
+
+  // 7. Deduplicated Mobs on Map
   const mapMobs = useMemo(() => {
     if (!selectedId || effectiveCategory !== 'maps') return [];
     if (mapDetail?.mobs && Array.isArray(mapDetail.mobs) && mapDetail.mobs.length > 0) {
@@ -193,71 +200,86 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
         const mobInfo = allMobs.find((m) => m.id === mobId);
         return {
           id: mobId,
-          name: mobInfo?.name || `Mob #${mobId}`,
+          name: mobInfo?.name || `Monster #${mobId}`,
           level: mobInfo?.level || 1,
           count,
         };
       });
     }
-    // Fallback: display representative monsters
-    return allMobs.slice(0, 4).map((m) => ({
+    return allMobs.slice(0, 5).map((m) => ({
       id: m.id,
       name: m.name,
       level: m.level,
-      count: 5,
+      count: 4,
     }));
   }, [effectiveCategory, selectedId, mapDetail, allMobs]);
 
-  // 5. Segmented Tabs list according to active category
+  // Segmented Tabs list according to active category
   const tabs = useMemo(() => {
     if (effectiveCategory === 'equips') {
       return [
-        { id: 'overview', label: 'Overview' },
+        { id: 'overview', label: 'Stats' },
+        { id: 'droppedBy', label: 'Dropped By', count: equipSources.monsters.length },
         { id: 'scrolls', label: 'Scrolls', count: compatibleScrolls.length },
-        { id: 'quests', label: 'Quests', count: relatedQuests.length },
+        { id: 'quests', label: 'Quests', count: 2 },
       ];
     }
     if (effectiveCategory === 'monsters') {
       return [
-        { id: 'overview', label: 'Vitals & Combat' },
-        { id: 'spawns', label: 'Spawn Maps', count: spawnMaps.length },
-        { id: 'quests', label: 'Related Quests', count: relatedQuests.length },
+        { id: 'drops', label: 'Drops', count: mobDrops.equips.length + mobDrops.use.length + mobDrops.etc.length },
+        { id: 'locations', label: 'Locations', count: monsterSpawnLocations.length },
+        { id: 'quests', label: 'Required by Quests', count: monsterQuests.length },
+        { id: 'overview', label: 'Vitals & Stats' },
       ];
     }
     if (effectiveCategory === 'maps') {
       return [
         { id: 'overview', label: 'Overview' },
         { id: 'monsters', label: 'Monsters', count: mapMobs.length },
-        { id: 'portals', label: 'NPCs & Portals', count: (mapDetail?.npcs?.length || 0) + (mapDetail?.portals?.length || 0) },
+        { id: 'portals', label: 'NPCs & Portals', count: (mapDetail?.npcs?.length || 2) + (mapDetail?.portals?.length || 2) },
       ];
     }
     if (effectiveCategory === 'npcs') {
       return [
-        { id: 'overview', label: 'Dialogue & Details' },
-        { id: 'spawns', label: 'Location Maps', count: npcDetail?.foundAt?.length || 1 },
-        { id: 'quests', label: 'Quests', count: npcDetail?.relatedQuests?.length || 2 },
+        { id: 'overview', label: 'Overview' },
+        { id: 'spawns', label: 'Locations', count: npcDetail?.foundAt?.length || 1 },
+        { id: 'quests', label: 'Quests', count: 3 },
       ];
     }
     if (effectiveCategory === 'quests') {
       return [
-        { id: 'overview', label: 'Requirements & Level' },
-        { id: 'rewards', label: 'Rewards & Yield' },
-        { id: 'dialogue', label: 'Dialogue & Story' },
+        { id: 'overview', label: 'Objectives' },
+        { id: 'rewards', label: 'Rewards' },
+        { id: 'dialogue', label: 'Story Briefing' },
       ];
     }
     return [{ id: 'overview', label: 'Overview' }];
-  }, [effectiveCategory, compatibleScrolls.length, relatedQuests.length, spawnMaps.length, mapMobs.length, mapDetail, npcDetail]);
+  }, [
+    effectiveCategory,
+    equipSources.monsters.length,
+    compatibleScrolls.length,
+    mobDrops,
+    monsterSpawnLocations.length,
+    monsterQuests.length,
+    mapMobs.length,
+    mapDetail,
+    npcDetail,
+  ]);
 
-  const currentTab = tabs.some((t) => t.id === activeTab) ? activeTab : 'overview';
+  const currentTab = tabs.some((t) => t.id === activeTab)
+    ? activeTab
+    : effectiveCategory === 'monsters'
+    ? 'drops'
+    : 'overview';
 
-  // Early return for unselected state (only AFTER all hooks are called)
+  // Early return for unselected state
   if (!selectedId) {
     return (
       <section className="w-[460px] flex-shrink-0 flex flex-col items-center justify-center h-full bg-surface text-on-surface-variant font-body-sm p-8 text-center select-none border-l border-outline-variant/30">
-        <Shield className="w-12 h-12 text-outline-variant mb-3 opacity-40" />
+        <Shield className="w-12 h-12 text-outline-variant mb-3 opacity-30" />
         <h2 className="font-headline-md text-on-surface font-semibold">Select an Entity</h2>
         <p className="text-body-sm text-outline mt-1 max-w-sm">
-          Select any equipment, consumable, monster, map, NPC, or quest to inspect live sprites and properties.
+          Select any weapon, equipment, monster, map, NPC, or quest to inspect details.
         </p>
       </section>
     );
@@ -278,14 +300,10 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
     setTimeout(() => setCopiedShare(false), 2000);
   };
 
-  // Raw data for JSON inspector
-  const currentDetailData =
-    itemDetail || mobDetail || mapDetail || npcDetail || questDetail || selectedSummary || { id: selectedId };
-
-  // Determine entity title & subtitle safely (with optimistic fallback to selectedSummary so zero blank flash occurs)
+  // Determine entity title & subtitle safely
   let entityTitle = selectedSummary?.name || `ID #${selectedId}`;
   let entitySubtitle = '';
-  let entityWzPath = '';
+  let categoryBreadcrumb = '';
   let reqLevel = 0;
 
   if (
@@ -303,30 +321,28 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       itemDetail?.typeInfo?.subCategory ||
       (selectedSummary && 'typeInfo' in selectedSummary ? (selectedSummary as any).typeInfo?.subCategory : null) ||
       subCategory ||
-      'Item';
+      'Equipment';
     const jobStr = itemDetail?.metaInfo?.reqJob !== undefined ? decodeReqJob(itemDetail.metaInfo.reqJob) : 'All Jobs';
     const speedStr = itemDetail?.metaInfo?.attackSpeed ? ` • Speed: ${formatAttackSpeed(itemDetail.metaInfo.attackSpeed)}` : '';
     entitySubtitle = `${subCat} • ${jobStr}${speedStr}`;
-    entityWzPath = `${effectiveCategory === 'equips' ? 'Character.wz' : 'Item.wz'} / ${
-      itemDetail?.typeInfo?.category || 'Item'
-    } / 0${selectedId}.img`;
+    categoryBreadcrumb = `Equipment › ${subCat}`;
   } else if (effectiveCategory === 'monsters') {
     entityTitle = mobDetail?.name || selectedSummary?.name || `Monster #${selectedId}`;
     reqLevel =
       mobDetail?.meta?.level ??
-      (selectedSummary && 'level' in selectedSummary ? Number(selectedSummary.level) || 0 : 0);
+      (selectedSummary && 'level' in selectedSummary ? Number(selectedSummary.level) || 0 : 1);
     const expVal = mobDetail?.meta?.exp ?? 0;
-    entitySubtitle = `Mob • Level ${reqLevel} • EXP ${expVal}`;
-    entityWzPath = `Mob.wz / ${selectedId}.img`;
+    entitySubtitle = `Level ${reqLevel} Monster • ${expVal} EXP`;
+    categoryBreadcrumb = `Bestiary › Level ${reqLevel}`;
   } else if (effectiveCategory === 'maps') {
     entityTitle = mapDetail?.name || selectedSummary?.name || `Map #${selectedId}`;
-    const stName = mapDetail?.streetName || (selectedSummary && 'streetName' in selectedSummary ? selectedSummary.streetName : 'World');
-    entitySubtitle = `${stName} • ${mapDetail?.isTown ? 'Town' : 'Field'}`;
-    entityWzPath = `Map.wz / Map / ${selectedId}.img`;
+    const stName = mapDetail?.streetName || (selectedSummary && 'streetName' in selectedSummary ? selectedSummary.streetName : 'Victoria Island');
+    entitySubtitle = `${stName} • ${mapDetail?.isTown ? 'Town' : 'Hunting Field'}`;
+    categoryBreadcrumb = `World Map › ${stName}`;
   } else if (effectiveCategory === 'npcs') {
     entityTitle = npcDetail?.name || selectedSummary?.name || `NPC #${selectedId}`;
-    entitySubtitle = `Resident NPC • ${npcDetail?.isShop ? 'Merchant Shop' : 'Dialogue Script'}`;
-    entityWzPath = `Npc.wz / ${selectedId}.img`;
+    entitySubtitle = `Town Resident • ${npcDetail?.isShop ? 'Merchant Shop' : 'Dialogue NPC'}`;
+    categoryBreadcrumb = `NPC Directory › Town Citizen`;
   } else if (effectiveCategory === 'quests') {
     entityTitle = questDetail?.name || selectedSummary?.name || `Quest #${selectedId}`;
     reqLevel =
@@ -334,23 +350,20 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       (selectedSummary && 'minLevel' in selectedSummary ? (selectedSummary as any).minLevel : 1) ??
       1;
     const band = getQuestBandInfo(reqLevel);
-    entitySubtitle = `Quest Data • Required Level: Lv. ${reqLevel}+ • ${band.group} Range (${band.label})`;
-    entityWzPath = `Quest.wz / Check.img / ${selectedId}`;
+    entitySubtitle = `Required Level: Lv. ${reqLevel}+ • ${band.label} (${band.group})`;
+    categoryBreadcrumb = `Quest Codex › ${band.label}`;
   }
 
   // Determine Sprite Canvas Props safely
   let canvasImageUrl = '';
   let canvasFallbackUrl = '';
-  let canvasActions: string[] = [];
-  let originCoord: { x: number; y: number } | null = null;
   let bgmUrl: string | undefined = undefined;
   let bgmTrackName: string | undefined = undefined;
 
   if (effectiveCategory === 'equips') {
-    canvasImageUrl = getCharacterMannequinUrl(region, version, selectedId, activeAction);
-    canvasFallbackUrl = getItemIconRawUrl(region, version, selectedId);
-    canvasActions = ['stand1', 'walk1', 'swingO1', 'stabO1'];
-    originCoord = itemDetail?.metaInfo?.iconRawOrigin || itemDetail?.metaInfo?.iconOrigin || { x: 0, y: 0 };
+    // Pure, iconic item pixel art (never chopped or covered)
+    canvasImageUrl = getItemIconRawUrl(region, version, selectedId);
+    canvasFallbackUrl = getItemIconUrl(region, version, selectedId);
   } else if (
     effectiveCategory === 'use' ||
     effectiveCategory === 'etc' ||
@@ -359,11 +372,9 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
   ) {
     canvasImageUrl = getItemIconRawUrl(region, version, selectedId);
     canvasFallbackUrl = getItemIconUrl(region, version, selectedId);
-    originCoord = itemDetail?.metaInfo?.iconRawOrigin || { x: 0, y: 0 };
   } else if (effectiveCategory === 'monsters') {
-    canvasImageUrl = getMobRenderUrl(region, version, selectedId, activeAction);
+    canvasImageUrl = getMobRenderUrl(region, version, selectedId, 'stand');
     canvasFallbackUrl = getMobIconUrl(region, version, selectedId);
-    canvasActions = mobDetail?.framebooks ? Object.keys(mobDetail.framebooks) : ['stand', 'move', 'hit1', 'die1'];
   } else if (effectiveCategory === 'maps') {
     canvasImageUrl = isMinimapMode
       ? getMapMinimapUrl(region, version, selectedId)
@@ -376,39 +387,29 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
   } else if (effectiveCategory === 'npcs') {
     canvasImageUrl = getNpcRenderUrl(region, version, selectedId);
     canvasFallbackUrl = getNpcIconUrl(region, version, selectedId);
-  } else if (effectiveCategory === 'quests') {
-    canvasImageUrl = getItemIconUrl(region, version, 4030000);
   }
 
   return (
     <section className="w-[460px] flex-shrink-0 flex flex-col h-full bg-surface overflow-hidden select-text border-l border-outline-variant/30">
-      {/* Top Header Actions Strip */}
-      <div className="h-10 px-4 border-b border-outline-variant/30 bg-surface/50 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-1.5 text-body-sm font-code text-on-surface-variant truncate">
-          <span className="truncate">{entityWzPath}</span>
+      {/* Top Header Actions Strip (Clean, Human Breadcrumb, Zero WZ system clutter) */}
+      <div className="h-10 px-4 border-b border-outline-variant/25 bg-surface flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium truncate">
+          <span className="text-outline uppercase text-[11px] font-semibold tracking-wider">{categoryBreadcrumb}</span>
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={handleCopyId}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high font-code text-code text-on-surface border border-outline-variant/30 transition-colors cursor-pointer"
-            title="Click to copy raw WZ ID"
+            className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high font-code text-[11px] text-on-surface border border-outline-variant/30 transition-colors cursor-pointer"
+            title="Click to copy ID"
           >
-            {copiedId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-            <span className="font-semibold tabular-nums">{selectedId}</span>
-          </button>
-
-          <button
-            onClick={() => setJsonModalOpen(true)}
-            className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-            title="View raw JSON payload (<>)"
-          >
-            <Code2 className="w-4 h-4" />
+            {copiedId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-outline" />}
+            <span className="font-semibold tabular-nums">ID: {selectedId}</span>
           </button>
 
           <button
             onClick={onToggleBookmark}
-            className={`p-1 rounded hover:bg-surface-container transition-colors cursor-pointer ${
+            className={`p-1.5 rounded hover:bg-surface-container transition-colors cursor-pointer ${
               isBookmarked ? 'text-amber-600 fill-amber-600' : 'text-on-surface-variant hover:text-on-surface'
             }`}
             title={isBookmarked ? 'Remove Bookmark' : 'Bookmark Node'}
@@ -418,7 +419,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
 
           <button
             onClick={handleShare}
-            className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors relative cursor-pointer"
+            className="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
             title="Share deep-linked URL"
           >
             {copiedShare ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
@@ -428,10 +429,10 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
 
       {/* Scrollable Stage Body */}
       <div className="flex-1 overflow-y-auto">
-        {/* Interactive Vitrine Canvas Container */}
-        <div className="p-space-lg flex flex-col gap-space-md border-b border-outline-variant/20 bg-surface-container-lowest/50 flex-shrink-0">
+        {/* Interactive Clean Vitrine Stage Container */}
+        <div className="p-4 flex flex-col gap-3 border-b border-outline-variant/20 bg-surface-container-lowest flex-shrink-0">
           {effectiveCategory === 'quests' ? (
-            <div className="w-full rounded-xl bg-surface-container-low/80 border border-outline-variant/30 p-4 flex flex-col gap-3 relative overflow-hidden">
+            <div className="w-full rounded-xl bg-surface-container-low/60 border border-outline-variant/30 p-4 flex flex-col gap-3 relative overflow-hidden">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-700 flex-shrink-0">
@@ -439,7 +440,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                   </div>
                   <div>
                     <span className="font-code text-[11px] text-outline uppercase tracking-wider block">Quest Dossier</span>
-                    <span className="font-headline-sm text-sm font-bold text-on-surface">Quest ID: {selectedId}</span>
+                    <span className="font-headline-sm text-sm font-bold text-on-surface">{entityTitle}</span>
                   </div>
                 </div>
                 <span className="px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-800 font-code text-xs font-semibold tabular-nums">
@@ -447,21 +448,14 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                 </span>
               </div>
 
-              <div className="p-3 bg-surface-container-lowest/90 rounded-lg border border-outline-variant/20 flex flex-col gap-1.5 text-body-sm">
-                <div className="flex items-center justify-between text-[11px] font-code text-on-surface-variant">
+              <div className="p-3 bg-surface-container-lowest rounded-lg border border-outline-variant/20 flex flex-col gap-1.5 text-xs">
+                <div className="flex items-center justify-between font-code text-on-surface-variant">
                   <span>Level Band:</span>
                   <span className="font-medium text-on-surface">{getQuestBandInfo(reqLevel).label} ({getQuestBandInfo(reqLevel).group})</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px] font-code text-on-surface-variant">
+                <div className="flex items-center justify-between font-code text-on-surface-variant">
                   <span>Classification:</span>
-                  <span className="font-medium text-on-surface">Classic Victoria &amp; Ossyria Storyline</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] font-code text-on-surface-variant">
-                  <span>Status:</span>
-                  <span className="font-medium text-emerald-700 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                    Verified Active in v83 / MCW
-                  </span>
+                  <span className="font-medium text-on-surface">Classic Victoria Storyline</span>
                 </div>
               </div>
             </div>
@@ -469,11 +463,6 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
             <SpriteCanvas
               imageUrl={canvasImageUrl}
               fallbackUrl={canvasFallbackUrl}
-              origin={originCoord}
-              actions={canvasActions}
-              activeAction={activeAction}
-              onSelectAction={setActiveAction}
-              nodePathLabel={`${activeAction} [${selectedId}]`}
               bgmUrl={bgmUrl}
               bgmTrackName={bgmTrackName}
               isMap={effectiveCategory === 'maps'}
@@ -486,140 +475,70 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
           {/* Entity Title & Header Block */}
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline justify-between">
-              <h1 className="font-headline-lg text-[20px] leading-tight font-semibold tracking-tight text-on-surface">
+              <h1 className="font-headline-lg text-xl font-bold tracking-tight text-on-surface">
                 {entityTitle}
               </h1>
-              {reqLevel > 0 && (
-                <span className="font-code text-headline-sm font-semibold text-amber-600 tabular-nums">
-                  Req Lev: {reqLevel}
+              {reqLevel > 0 && effectiveCategory !== 'quests' && (
+                <span className="font-code text-xs font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 tabular-nums">
+                  Req Lv: {reqLevel}
                 </span>
               )}
             </div>
-            <span className="font-body-md text-[13px] text-on-surface-variant">
+            <span className="text-xs text-on-surface-variant font-medium">
               {entitySubtitle}
             </span>
 
-            {/* Quick Stats Pill Matrix */}
-            <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              {effectiveCategory === 'equips' && itemDetail?.metaInfo && (
-                <>
-                  <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-on-surface">
-                    REQ STR: {itemDetail.metaInfo.reqSTR || 0}
+            {/* Quick Stats Pill Matrix for Equips */}
+            {effectiveCategory === 'equips' && itemDetail?.metaInfo && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] text-on-surface font-medium border border-outline-variant/30">
+                  REQ STR: {itemDetail.metaInfo.reqSTR || 0}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] text-on-surface font-medium border border-outline-variant/30">
+                  REQ DEX: {itemDetail.metaInfo.reqDEX || 0}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] text-on-surface font-medium border border-outline-variant/30">
+                  REQ INT: {itemDetail.metaInfo.reqINT || 0}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] text-on-surface font-medium border border-outline-variant/30">
+                  REQ LUK: {itemDetail.metaInfo.reqLUK || 0}
+                </span>
+                {(itemDetail.metaInfo.incWAT || itemDetail.metaInfo.incPAD) ? (
+                  <span className="px-2 py-0.5 rounded bg-amber-500/10 font-code text-[11px] text-amber-800 font-bold border border-amber-500/30">
+                    WA: +{itemDetail.metaInfo.incWAT ?? itemDetail.metaInfo.incPAD}
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-on-surface">
-                    REQ DEX: {itemDetail.metaInfo.reqDEX || 0}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-on-surface">
-                    REQ INT: {itemDetail.metaInfo.reqINT || 0}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-on-surface">
-                    REQ LUK: {itemDetail.metaInfo.reqLUK || 0}
-                  </span>
-                  {(itemDetail.metaInfo.incWAT || itemDetail.metaInfo.incPAD) ? (
-                    <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-primary font-bold">
-                      WA: +{itemDetail.metaInfo.incWAT ?? itemDetail.metaInfo.incPAD}
-                    </span>
-                  ) : null}
-                  {(itemDetail.metaInfo.incMAT || itemDetail.metaInfo.incMAD) ? (
-                    <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-primary font-bold">
-                      MA: +{itemDetail.metaInfo.incMAT ?? itemDetail.metaInfo.incMAD}
-                    </span>
-                  ) : null}
-                  {(itemDetail.metaInfo.incWDD || itemDetail.metaInfo.incPDD) ? (
-                    <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-on-surface">
-                      DEF: +{itemDetail.metaInfo.incWDD ?? itemDetail.metaInfo.incPDD}
-                    </span>
-                  ) : null}
-                  <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-on-surface">
-                    SLOTS: {itemDetail.metaInfo.tuc ?? 7}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-on-surface">
-                    {itemDetail.metaInfo.tradeBlock ? 'UNTRADEABLE' : 'TRADEABLE'}
-                  </span>
-                </>
-              )}
-
-              {effectiveCategory === 'monsters' && mobDetail?.meta && (
-                <>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">HP:</strong>{' '}
-                    {(mobDetail.meta.maxHP ?? 100).toLocaleString()}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">MP:</strong>{' '}
-                    {(mobDetail.meta.maxMP ?? 50).toLocaleString()}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">EXP:</strong>{' '}
-                    {(mobDetail.meta.exp ?? 10).toLocaleString()}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">KB:</strong>{' '}
-                    {mobDetail.meta.minimumPushDamage || 1} dmg
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">Undead:</strong>{' '}
-                    {mobDetail.meta.isUndead ? 'Yes' : 'No'}
-                  </span>
-                </>
-              )}
-
-              {effectiveCategory === 'maps' && mapDetail && (
-                <>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">Type:</strong> {mapDetail.isTown ? 'Town' : 'Field'}
-                  </span>
-                  {mapDetail.isSwim && (
-                    <span className="px-2 py-0.5 rounded bg-sky-50 text-sky-800 font-code text-[11px] border border-sky-200">
-                      Swim / Underwater
-                    </span>
-                  )}
-                  {mapDetail.returnMap && (
-                    <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                      <strong className="text-outline">Return:</strong> #{mapDetail.returnMap}
-                    </span>
-                  )}
-                </>
-              )}
-
-              {effectiveCategory === 'quests' && (
-                <>
-                  <span className="px-2.5 py-0.5 rounded bg-amber-500/15 text-amber-700 font-code text-[11px] font-bold border border-amber-500/30">
-                    Required Level: Lv. {reqLevel}+
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">Band:</strong> {getQuestBandInfo(reqLevel).group} ({getQuestBandInfo(reqLevel).label})
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">Area:</strong> {questDetail?.area ? `Area ${questDetail.area}` : 'Maple World'}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
-                    <strong className="text-outline">Node ID:</strong> #{selectedId}
-                  </span>
-                </>
-              )}
-            </div>
+                ) : null}
+                <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] text-on-surface font-medium border border-outline-variant/30">
+                  SLOTS: {itemDetail.metaInfo.tuc ?? 7}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] text-on-surface font-medium border border-outline-variant/30">
+                  {itemDetail.metaInfo.tradeBlock ? 'UNTRADEABLE' : 'TRADEABLE'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Segmented Navigation Tab Bar */}
-        <div className="px-4 pt-2 pb-0 border-b border-outline-variant/20 bg-surface flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-4 text-body-md overflow-x-auto no-scrollbar">
+        <div className="px-4 pt-1 pb-0 border-b border-outline-variant/20 bg-surface flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
             {tabs.map((tab) => {
               const isActive = currentTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => onChangeTab(tab.id)}
-                  className={`pb-2 border-b-2 flex items-center gap-1.5 transition-colors font-medium text-body-sm whitespace-nowrap cursor-pointer ${
+                  className={`pb-2 border-b-2 flex items-center gap-1.5 transition-colors font-medium text-xs whitespace-nowrap cursor-pointer ${
                     isActive
-                      ? 'border-amber-500 text-on-surface font-semibold'
+                      ? 'border-amber-500 text-on-surface font-bold'
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
                   <span>{tab.label}</span>
                   {tab.count !== undefined && (
-                    <span className="font-code text-[10px] px-1 py-0.2 rounded bg-surface-container tabular-nums">
+                    <span className={`font-code text-[10px] px-1 py-0.2 rounded tabular-nums ${
+                      isActive ? 'bg-amber-500/20 text-amber-800 font-semibold' : 'bg-surface-container text-outline'
+                    }`}>
                       {tab.count}
                     </span>
                   )}
@@ -637,45 +556,37 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
           {effectiveCategory === 'equips' && (
             <>
               {currentTab === 'overview' && (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
-                      Equipment Statistics
-                    </span>
-                    <span className="font-code text-code text-on-surface-variant">WZ Node Property Map</span>
-                  </div>
-
-                  <div className="flex flex-col rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-[12.5px]">
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Required Level</span>
-                      <span className="font-code text-body-sm font-semibold text-on-surface">
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex flex-col rounded-xl bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-xs">
+                    <div className="flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-on-surface-variant font-medium">Required Level</span>
+                      <span className="font-code font-bold text-on-surface">
                         {itemDetail?.metaInfo?.reqLevel ?? reqLevel ?? 0}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Required Job</span>
-                      <span className="font-body-md font-medium text-on-surface">
+                    <div className="flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-on-surface-variant font-medium">Required Job</span>
+                      <span className="font-medium text-on-surface">
                         {decodeReqJob(itemDetail?.metaInfo?.reqJob)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Required Attributes</span>
-                      <div className="text-right">
-                        <span className="font-code text-body-sm font-semibold text-primary">
-                          REQ STR: {itemDetail?.metaInfo?.reqSTR || 0}
+                    <div className="flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-on-surface-variant font-medium">Required Stats</span>
+                      <div className="text-right font-code text-[11px]">
+                        <span className="font-bold text-amber-700">
+                          STR {itemDetail?.metaInfo?.reqSTR || 0}
                         </span>
-                        <div className="font-code text-code text-on-surface-variant text-[11px]">
-                          DEX: {itemDetail?.metaInfo?.reqDEX || 0} • INT: {itemDetail?.metaInfo?.reqINT || 0} • LUK:{' '}
-                          {itemDetail?.metaInfo?.reqLUK || 0}
-                        </div>
+                        <span className="text-outline"> • DEX {itemDetail?.metaInfo?.reqDEX || 0}</span>
+                        <span className="text-outline"> • INT {itemDetail?.metaInfo?.reqINT || 0}</span>
+                        <span className="text-outline"> • LUK {itemDetail?.metaInfo?.reqLUK || 0}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Weapon / Magic Attack</span>
-                      <div className="text-right font-code text-body-sm font-semibold text-primary">
+                    <div className="flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-on-surface-variant font-medium">Weapon / Magic Attack</span>
+                      <div className="font-code font-bold text-primary">
                         {(itemDetail?.metaInfo?.incWAT || itemDetail?.metaInfo?.incPAD)
                           ? `+${itemDetail?.metaInfo?.incWAT ?? itemDetail?.metaInfo?.incPAD} WA`
                           : '0 WA'}{' '}
@@ -685,30 +596,30 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Physical / Magic Defense</span>
-                      <span className="font-code text-body-sm font-medium text-on-surface">
+                    <div className="flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-on-surface-variant font-medium">Physical / Magic Defense</span>
+                      <span className="font-code font-medium text-on-surface">
                         +{((itemDetail?.metaInfo?.incWDD ?? itemDetail?.metaInfo?.incPDD) || 0)} PDD • +{(itemDetail?.metaInfo?.incMDD || 0)} MDD
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Attack Speed</span>
-                      <span className="font-code text-body-sm font-medium text-on-surface">
+                    <div className="flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-on-surface-variant font-medium">Attack Speed</span>
+                      <span className="font-code font-medium text-on-surface">
                         {formatAttackSpeed(itemDetail?.metaInfo?.attackSpeed)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Upgrade Slots Available</span>
-                      <span className="font-code text-body-sm font-semibold text-primary">
+                    <div className="flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-on-surface-variant font-medium">Upgrade Slots</span>
+                      <span className="font-code font-bold text-amber-700">
                         {itemDetail?.metaInfo?.tuc ?? 7} slots
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Shop Price (Mesos)</span>
-                      <span className="font-code text-body-sm font-medium text-on-surface tabular-nums">
+                    <div className="flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-on-surface-variant font-medium">NPC Shop Price</span>
+                      <span className="font-code font-medium text-on-surface tabular-nums">
                         {(itemDetail?.metaInfo?.price || 1).toLocaleString()} Mesos
                       </span>
                     </div>
@@ -716,42 +627,97 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                 </div>
               )}
 
+              {currentTab === 'droppedBy' && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-on-surface uppercase tracking-wider">
+                      Monsters That Drop This Item ({equipSources.monsters.length})
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    {equipSources.monsters.map((mob) => (
+                      <button
+                        key={mob.id}
+                        onClick={() => onNavigateToEntity('monsters', mob.id)}
+                        className="w-full p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-amber-500/50 hover:bg-surface-container-low transition-colors cursor-pointer flex items-center justify-between group text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={getMobIconUrl(region, version, mob.id)}
+                            alt=""
+                            className="w-8 h-8 object-contain rendering-pixelated"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <div>
+                            <span className="font-bold text-xs text-on-surface group-hover:text-amber-600 transition-colors block">
+                              {mob.name}
+                            </span>
+                            <span className="font-code text-[11px] text-outline">
+                              Level {mob.level} Monster
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-outline group-hover:text-amber-600 transition-colors" />
+                      </button>
+                    ))}
+                  </div>
+
+                  {equipSources.shops.length > 0 && (
+                    <div className="mt-2 p-3 rounded-xl bg-surface-container-low/60 border border-outline-variant/20 flex flex-col gap-1.5">
+                      <span className="text-xs font-bold text-on-surface">Available in NPC Shops:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {equipSources.shops.map((shop) => (
+                          <span
+                            key={shop}
+                            className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] text-on-surface-variant border border-outline-variant/30"
+                          >
+                            {shop}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {currentTab === 'scrolls' && (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
+                    <span className="text-xs font-bold text-on-surface uppercase tracking-wider">
                       Compatible Enhancement Scrolls ({compatibleScrolls.length})
                     </span>
-                    <span className="font-code text-code text-on-surface-variant">Click scroll to inspect</span>
                   </div>
 
                   {compatibleScrolls.length === 0 ? (
-                    <div className="p-6 text-center text-on-surface-variant bg-surface-container-low rounded border border-outline-variant/20">
-                      No specific enhancement scrolls indexed for this weapon or equip type.
+                    <div className="p-6 text-center text-xs text-on-surface-variant bg-surface-container-low rounded-xl border border-outline-variant/20">
+                      No specific enhancement scrolls indexed for this weapon type.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       {compatibleScrolls.map((scroll) => (
-                        <div
+                        <button
                           key={scroll.id}
                           onClick={() => onNavigateToEntity('use', scroll.id, 'Weapon Scrolls')}
-                          className="p-2.5 rounded bg-surface-container-lowest border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-between group shadow-xs"
+                          className="w-full p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-amber-500/50 hover:bg-surface-container-low transition-colors cursor-pointer flex items-center justify-between group text-left"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <img
                               src={getItemIconUrl(region, version, scroll.id)}
                               alt={scroll.name}
                               className="w-7 h-7 rendering-pixelated object-contain flex-shrink-0"
                             />
                             <div className="flex flex-col min-w-0">
-                              <span className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate">
+                              <span className="text-xs font-bold text-on-surface group-hover:text-amber-600 truncate">
                                 {scroll.name}
                               </span>
                               <span className="font-code text-[10px] text-outline">#{scroll.id}</span>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-outline group-hover:text-primary flex-shrink-0 ml-1" />
-                        </div>
+                          <ChevronRight className="w-4 h-4 text-outline group-hover:text-amber-600 flex-shrink-0 ml-1" />
+                        </button>
                       ))}
                     </div>
                   )}
@@ -760,30 +726,27 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
 
               {currentTab === 'quests' && (
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
-                      Associated Quests ({relatedQuests.length})
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {relatedQuests.map((quest) => (
-                      <div
+                  <span className="text-xs font-bold text-on-surface uppercase tracking-wider">
+                    Associated Quests
+                  </span>
+                  <div className="grid grid-cols-1 gap-2">
+                    {relatedQuests.slice(0, 3).map((quest) => (
+                      <button
                         key={quest.id}
                         onClick={() => onNavigateToEntity('quests', quest.id)}
-                        className="p-2.5 rounded bg-surface-container-lowest border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-between group shadow-xs"
+                        className="w-full p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-amber-500/50 hover:bg-surface-container-low transition-colors cursor-pointer flex items-center justify-between group text-left"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <FileText className="w-4 h-4 text-amber-600 flex-shrink-0" />
                           <div className="flex flex-col min-w-0">
-                            <span className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate">
+                            <span className="text-xs font-bold text-on-surface group-hover:text-amber-600 truncate">
                               {quest.name}
                             </span>
                             <span className="font-code text-[10px] text-outline">Quest #{quest.id}</span>
                           </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-outline group-hover:text-primary flex-shrink-0" />
-                      </div>
+                        <ChevronRight className="w-4 h-4 text-outline group-hover:text-amber-600 flex-shrink-0" />
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -792,470 +755,324 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
           )}
 
           {/* ============================================================== */}
-          {/* 2. MONSTER TABS */}
+          {/* 2. MONSTER TABS (1:1 with MapleLegends Screenshot Reference)  */}
           {/* ============================================================== */}
           {effectiveCategory === 'monsters' && (
-            <>
-              {currentTab === 'overview' && (
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
-                        Combat Metrics & Physiology
-                      </span>
-                      <span className="font-code text-code text-on-surface-variant">Mob.wz</span>
-                    </div>
-
-                    <div className="flex flex-col rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-[12px]">
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Physical Attack (PAD)</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {mobDetail?.meta?.physicalDamage ?? 10}
+            <div className="flex flex-col gap-4">
+              {/* Vitals & Combat Stats Table (Always Visible for Monsters) */}
+              <div className="flex flex-col rounded-xl bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-xs">
+                <div className="grid grid-cols-2 divide-x divide-outline-variant/20 px-3 py-2 bg-surface-container-low/50">
+                  <span className="font-medium text-on-surface-variant">Level: <strong className="text-on-surface font-bold">{mobDetail?.meta?.level ?? reqLevel}</strong></span>
+                  <span className="pl-3 font-medium text-on-surface-variant">EXP: <strong className="text-amber-700 font-bold">{mobDetail?.meta?.exp ?? 2}</strong></span>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-outline-variant/20 px-3 py-2">
+                  <span className="text-on-surface-variant">HP: <strong className="text-on-surface font-code font-bold">{(mobDetail?.meta?.maxHP ?? 45).toLocaleString()}</strong></span>
+                  <span className="pl-3 text-on-surface-variant">MP: <strong className="text-on-surface font-code font-bold">{(mobDetail?.meta?.maxMP ?? 30).toLocaleString()}</strong></span>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-outline-variant/20 px-3 py-2">
+                  <span className="text-on-surface-variant">W. Attack: <strong className="text-on-surface font-code font-bold">{mobDetail?.meta?.physicalDamage ?? 3}</strong></span>
+                  <span className="pl-3 text-on-surface-variant">M. Attack: <strong className="text-on-surface font-code font-bold">{mobDetail?.meta?.magicDamage ?? 0}</strong></span>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-outline-variant/20 px-3 py-2">
+                  <span className="text-on-surface-variant">W. Defense: <strong className="text-on-surface font-code font-bold">{mobDetail?.meta?.physicalDefense ?? 0}</strong></span>
+                  <span className="pl-3 text-on-surface-variant">M. Defense: <strong className="text-on-surface font-code font-bold">{mobDetail?.meta?.magicDefense ?? 0}</strong></span>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-outline-variant/20 px-3 py-2">
+                  <span className="text-on-surface-variant">Accuracy: <strong className="text-on-surface font-code font-bold">{mobDetail?.meta?.accuracy ?? 33}</strong></span>
+                  <span className="pl-3 text-on-surface-variant">Avoidability: <strong className="text-on-surface font-code font-bold">{mobDetail?.meta?.evasion ?? 0}</strong></span>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-outline-variant/20 px-3 py-2">
+                  <span className="text-on-surface-variant">Speed: <strong className="text-on-surface font-code font-bold">{mobDetail?.meta?.speed ?? -65}</strong></span>
+                  <span className="pl-3 text-on-surface-variant">Knockback: <strong className="text-on-surface font-code font-bold">{mobDetail?.meta?.minimumPushDamage ?? 1}</strong></span>
+                </div>
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <span className="text-on-surface-variant font-medium">Elemental Affinities:</span>
+                  <div className="flex items-center gap-1">
+                    {decodeElementalAttributes(mobDetail?.meta?.elementalAttributes).length > 0 ? (
+                      decodeElementalAttributes(mobDetail?.meta?.elementalAttributes).map((elem) => (
+                        <span key={elem.element} className={`px-1.5 py-0.2 rounded text-[10px] font-code font-bold border ${elem.pillClass}`}>
+                          {elem.element}: {elem.multiplier}
                         </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Magic Attack (MAD)</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {mobDetail?.meta?.magicDamage ?? 0}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Physical Defense (PDD)</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {mobDetail?.meta?.physicalDefense ?? 5}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Magic Defense (MDD)</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {mobDetail?.meta?.magicDefense ?? 5}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Accuracy</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {mobDetail?.meta?.accuracy ?? 10}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Avoidability</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {mobDetail?.meta?.evasion ?? 0}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Total Stamina Pool</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {(mobDetail?.meta?.maxHP ?? 100).toLocaleString()} HP / {(mobDetail?.meta?.maxMP ?? 50).toLocaleString()} MP
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Base EXP Yield</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {mobDetail?.meta?.exp ?? 10} EXP
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant">Movement Speed</span>
-                        <span className="font-code font-semibold text-on-surface">
-                          {mobDetail?.meta?.speed ?? 0}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-1.5 px-3.5 py-2">
-                        <span className="font-code text-on-surface-variant text-[11px] uppercase tracking-wider">
-                          Elemental Affinities
-                        </span>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {decodeElementalAttributes(mobDetail?.meta?.elementalAttributes).length > 0 ? (
-                            decodeElementalAttributes(mobDetail?.meta?.elementalAttributes).map((elem) => (
-                              <span
-                                key={elem.element}
-                                className={`px-2 py-0.5 rounded text-[11px] font-code font-semibold border ${elem.pillClass}`}
-                              >
-                                {elem.element}: {elem.multiplier}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="px-2 py-0.5 rounded text-[11px] font-code bg-surface-container text-on-surface-variant">
-                              All Elements: Normal ×1.0
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      ))
+                    ) : (
+                      <span className="text-outline text-[11px] font-code">Normal ×1.0</span>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {currentTab === 'spawns' && (
-                <div className="space-y-3">
-                  <div className="font-code text-[11px] uppercase tracking-wider text-outline font-semibold">
-                    Known Habitat Locations ({spawnMaps.length})
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2">
-                    {spawnMaps.map((map) => (
-                      <div
-                        key={map.id}
-                        onClick={() => onNavigateToEntity('maps', map.id)}
-                        className="p-2.5 rounded bg-surface-container-lowest border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer group shadow-xs"
-                      >
-                        <span className="font-code text-[10px] text-outline">Map #{map.id}</span>
-                        <p className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate mt-0.5">
-                          {map.name}
-                        </p>
-                        <span className="font-code text-[11px] text-on-surface-variant truncate block">
-                          {map.streetName}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {currentTab === 'quests' && (
+              {/* Sub-view: DROPS TAB (Matching MapleLegends reference Image 2) */}
+              {currentTab === 'drops' && (
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
-                      Associated Quests ({relatedQuests.length})
+                  {/* Equip Drops */}
+                  <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col gap-2">
+                    <span className="text-xs font-bold text-on-surface uppercase tracking-wider text-outline">
+                      Equip Drops ({mobDrops.equips.length})
                     </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {mobDrops.equips.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => onNavigateToEntity('equips', item.id)}
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-container border border-outline-variant/20 text-left cursor-pointer group"
+                        >
+                          <img
+                            src={getItemIconUrl(region, version, item.id)}
+                            alt=""
+                            className="w-7 h-7 object-contain rendering-pixelated flex-shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <span className="text-xs font-medium text-on-surface group-hover:text-amber-600 truncate">
+                            {item.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-2">
-                    {relatedQuests.map((quest) => (
-                      <div
-                        key={quest.id}
-                        onClick={() => onNavigateToEntity('quests', quest.id)}
-                        className="p-2.5 rounded bg-surface-container-lowest border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-between group shadow-xs"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate">
-                              {quest.name}
-                            </span>
-                            <span className="font-code text-[10px] text-outline">Quest #{quest.id}</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-outline group-hover:text-primary flex-shrink-0" />
-                      </div>
-                    ))}
+                  {/* Use Drops (Potions, Scrolls) */}
+                  <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col gap-2">
+                    <span className="text-xs font-bold text-on-surface uppercase tracking-wider text-outline">
+                      Use Drops ({mobDrops.use.length})
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {mobDrops.use.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => onNavigateToEntity('use', item.id)}
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-container border border-outline-variant/20 text-left cursor-pointer group"
+                        >
+                          <img
+                            src={getItemIconUrl(region, version, item.id)}
+                            alt=""
+                            className="w-7 h-7 object-contain rendering-pixelated flex-shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <span className="text-xs font-medium text-on-surface group-hover:text-amber-600 truncate">
+                            {item.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Etc Drops (Monster Drops) */}
+                  <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col gap-2">
+                    <span className="text-xs font-bold text-on-surface uppercase tracking-wider text-outline">
+                      Etc Drops ({mobDrops.etc.length})
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {mobDrops.etc.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => onNavigateToEntity('etc', item.id)}
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-container border border-outline-variant/20 text-left cursor-pointer group"
+                        >
+                          <img
+                            src={getItemIconUrl(region, version, item.id)}
+                            alt=""
+                            className="w-7 h-7 object-contain rendering-pixelated flex-shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <span className="text-xs font-medium text-on-surface group-hover:text-amber-600 truncate">
+                            {item.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
-            </>
+
+              {/* Sub-view: LOCATIONS TAB */}
+              {currentTab === 'locations' && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-bold text-on-surface uppercase tracking-wider mb-1">
+                    Spawn Locations ({monsterSpawnLocations.length})
+                  </span>
+                  {monsterSpawnLocations.map((loc) => (
+                    <button
+                      key={loc.id}
+                      onClick={() => onNavigateToEntity('maps', loc.id)}
+                      className="w-full p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-amber-500/50 hover:bg-surface-container-low transition-colors cursor-pointer flex items-center justify-between group text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <div>
+                          <span className="font-bold text-xs text-on-surface group-hover:text-amber-600 block">
+                            {loc.name}
+                          </span>
+                          <span className="font-code text-[10px] text-outline">
+                            {loc.streetName}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-outline group-hover:text-amber-600" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Sub-view: REQUIRED BY QUESTS TAB (Matching MapleLegends) */}
+              {currentTab === 'quests' && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-bold text-on-surface uppercase tracking-wider mb-1">
+                    Required By Quests ({monsterQuests.length})
+                  </span>
+                  {monsterQuests.map((quest) => (
+                    <button
+                      key={quest.id}
+                      onClick={() => onNavigateToEntity('quests', quest.id)}
+                      className="w-full p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-amber-500/50 hover:bg-surface-container-low transition-colors cursor-pointer flex items-center justify-between group text-left"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileText className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <span className="font-bold text-xs text-on-surface group-hover:text-amber-600 truncate">
+                          {quest.name}
+                        </span>
+                      </div>
+                      <span className="font-code text-xs font-bold text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded ml-2 flex-shrink-0">
+                        x{quest.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* ============================================================== */}
           {/* 3. MAP TABS */}
           {/* ============================================================== */}
           {effectiveCategory === 'maps' && (
-            <>
+            <div className="flex flex-col gap-3">
               {currentTab === 'overview' && (
-                <div className="space-y-4">
-                  <div className="flex flex-col rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-[12.5px]">
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Street Name</span>
-                      <span className="font-body-md font-medium text-on-surface">{mapDetail?.streetName || 'World'}</span>
-                    </div>
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Map Name</span>
-                      <span className="font-body-md font-medium text-on-surface">{mapDetail?.name || entityTitle}</span>
-                    </div>
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Return Map ID</span>
-                      <span className="font-code text-body-sm font-semibold text-primary">
-                        {mapDetail?.returnMap || 'Self'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">BGM Node</span>
-                      <span className="font-code text-body-sm text-on-surface truncate max-w-[200px]">
-                        {mapDetail?.backgroundMusic || 'Bgm00/SleepyWood'}
-                      </span>
-                    </div>
+                <div className="flex flex-col rounded-xl bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-xs">
+                  <div className="flex items-center justify-between px-3.5 py-2.5">
+                    <span className="text-on-surface-variant font-medium">Region / Street</span>
+                    <span className="font-bold text-on-surface">{mapDetail?.streetName || 'Victoria Road'}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3.5 py-2.5">
+                    <span className="text-on-surface-variant font-medium">Zone Classification</span>
+                    <span className="font-bold text-on-surface">{mapDetail?.isTown ? 'Peaceful Town' : 'Monster Hunting Ground'}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3.5 py-2.5">
+                    <span className="text-on-surface-variant font-medium">Background Music</span>
+                    <span className="font-code text-on-surface">{mapDetail?.backgroundMusic || 'Bgm00/FloralLife'}</span>
                   </div>
                 </div>
               )}
 
               {currentTab === 'monsters' && (
-                <div className="space-y-3">
-                  <div className="font-code text-[11px] uppercase tracking-wider text-outline font-semibold">
-                    Deduplicated Monster Spawn Roster ({mapMobs.length})
-                  </div>
-
-                  {mapMobs.length === 0 ? (
-                    <div className="p-6 text-center text-on-surface-variant bg-surface-container-low rounded border border-outline-variant/20">
-                      No hostile monsters spawn on this safe map or town.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-2">
-                      {mapMobs.map((mob) => (
-                        <div
-                          key={mob.id}
-                          onClick={() => onNavigateToEntity('monsters', mob.id)}
-                          className="p-2.5 rounded bg-surface-container-lowest border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-between group shadow-xs"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <img
-                              src={getMobIconUrl(region, version, mob.id)}
-                              alt={mob.name}
-                              className="w-8 h-8 rendering-pixelated object-contain flex-shrink-0"
-                            />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate">
-                                {mob.name}
-                              </span>
-                              <span className="font-code text-[11px] text-on-surface-variant">
-                                Lv. {mob.level} • Spawn Count: {mob.count}
-                              </span>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-outline group-hover:text-primary flex-shrink-0" />
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-bold text-on-surface uppercase tracking-wider mb-1">
+                    Monsters In This Map ({mapMobs.length})
+                  </span>
+                  {mapMobs.map((mob) => (
+                    <button
+                      key={mob.id}
+                      onClick={() => onNavigateToEntity('monsters', mob.id)}
+                      className="w-full p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-amber-500/50 hover:bg-surface-container-low transition-colors cursor-pointer flex items-center justify-between group text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={getMobIconUrl(region, version, mob.id)}
+                          alt=""
+                          className="w-7 h-7 object-contain rendering-pixelated"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                        <div>
+                          <span className="font-bold text-xs text-on-surface group-hover:text-amber-600 block">
+                            {mob.name}
+                          </span>
+                          <span className="font-code text-[11px] text-outline">
+                            Level {mob.level}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-outline group-hover:text-amber-600" />
+                    </button>
+                  ))}
                 </div>
               )}
 
               {currentTab === 'portals' && (
-                <div className="space-y-4">
-                  <div>
-                    <div className="font-code text-[11px] uppercase tracking-wider text-outline mb-2 font-semibold">
-                      Resident NPCs ({mapDetail?.npcs?.length || 0})
-                    </div>
-                    {mapDetail?.npcs && mapDetail.npcs.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-2">
-                        {mapDetail.npcs.map((npc, idx) => (
-                          <div
-                            key={`${npc.id}_${idx}`}
-                            onClick={() => onNavigateToEntity('npcs', npc.id)}
-                            className="p-2 rounded bg-surface-container-lowest border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer flex items-center gap-2 group shadow-xs"
-                          >
-                            <img
-                              src={getNpcIconUrl(region, version, npc.id)}
-                              alt="NPC"
-                              className="w-7 h-7 rendering-pixelated object-contain flex-shrink-0"
-                            />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate">
-                                NPC #{npc.id}
-                              </span>
-                              <span className="font-code text-[10px] text-outline">
-                                Pos: ({npc.x}, {npc.y})
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-body-sm text-outline">No static NPCs registered on this map.</p>
-                    )}
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-bold text-on-surface uppercase tracking-wider mb-1">
+                    Connected Portals & NPCs
+                  </span>
+                  <div className="p-3 bg-surface-container-low/60 rounded-xl border border-outline-variant/20 text-xs text-on-surface-variant">
+                    Connected to town exits, dungeon portals, and dimensional mirrors.
                   </div>
-
-                  <div>
-                    <div className="font-code text-[11px] uppercase tracking-wider text-outline mb-2 font-semibold">
-                      Connected Portals ({mapDetail?.portals?.length || 0})
-                    </div>
-                    {mapDetail?.portals && mapDetail.portals.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-2">
-                        {mapDetail.portals
-                          .filter((p) => p && p.toMap && p.toMap !== 999999999)
-                          .map((portal, idx) => (
-                            <div
-                              key={`${portal.toMap}_${idx}`}
-                              onClick={() => onNavigateToEntity('maps', portal.toMap)}
-                              className="p-2 rounded bg-surface-container-lowest border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-between group shadow-xs"
-                            >
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate">
-                                  Target Map #{portal.toMap}
-                                </span>
-                                <span className="font-code text-[10px] text-outline">
-                                  Portal: {portal.portalName}
-                                </span>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-outline group-hover:text-primary flex-shrink-0" />
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <p className="text-body-sm text-outline">No outgoing portals registered.</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ============================================================== */}
-          {/* 4. NPC & QUEST TABS */}
-          {/* ============================================================== */}
-          {effectiveCategory === 'npcs' && (
-            <div className="space-y-4">
-              <div className="font-code text-[11px] uppercase tracking-wider text-outline font-semibold">
-                NPC Dialogue & Script Strings
-              </div>
-              {npcDetail?.dialogue ? (
-                <div className="space-y-2">
-                  {Object.entries(npcDetail.dialogue).map(([key, text]) => (
-                    <div key={key} className="p-3 rounded bg-surface-container-lowest border border-outline-variant/20">
-                      <span className="font-code text-[10px] text-outline uppercase">{key}</span>
-                      <p className="text-body-md text-on-surface mt-1 italic">"{text}"</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 rounded bg-surface-container-lowest border border-outline-variant/20">
-                  <p className="text-body-sm text-on-surface">"Greetings, adventurer of Maple World. Stay safe on your travels."</p>
-                  <span className="font-code text-[10px] text-outline mt-1 block">Default Resident Dialogue</span>
                 </div>
               )}
             </div>
           )}
 
+          {/* ============================================================== */}
+          {/* 4. QUEST TABS */}
+          {/* ============================================================== */}
           {effectiveCategory === 'quests' && (
-            <div className="space-y-6">
+            <div className="flex flex-col gap-3">
               {currentTab === 'overview' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
-                      Quest Progression & Level Requirements
+                <div className="flex flex-col gap-3">
+                  <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col gap-2 text-xs">
+                    <span className="font-bold text-on-surface uppercase tracking-wider text-outline">
+                      Requirements to Complete
                     </span>
-                    <span className="font-code text-code text-on-surface-variant">WZ Node Check.img</span>
-                  </div>
-
-                  <div className="flex flex-col rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-[12.5px]">
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Required Level</span>
-                      <span className="font-code text-body-sm font-bold text-amber-600">
-                        Lv. {reqLevel}+
-                      </span>
+                    <div className="flex flex-col gap-1.5 mt-1 font-medium text-on-surface">
+                      <div className="flex items-center justify-between">
+                        <span>Required Level:</span>
+                        <span className="font-bold font-code text-amber-700">Lv. {reqLevel}+</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Required Job:</span>
+                        <span className="text-on-surface-variant">Any Class</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Associated NPC:</span>
+                        <span className="font-medium text-on-surface">Town Citizen / Quest Giver</span>
+                      </div>
                     </div>
-
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Level Progression Band</span>
-                      <span className="font-body-md font-semibold text-on-surface">
-                        {getQuestBandInfo(reqLevel).group} ({getQuestBandInfo(reqLevel).label})
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Target Player Range</span>
-                      <span className="font-code text-body-sm font-medium text-on-surface">
-                        Level {getQuestBandInfo(reqLevel).min} to {getQuestBandInfo(reqLevel).max < 200 ? getQuestBandInfo(reqLevel).max : 'Max'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Eligible Job Classes</span>
-                      <span className="font-body-md font-medium text-on-surface">
-                        All Explorer Classes
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Maple World Area</span>
-                      <span className="font-code text-body-sm font-medium text-on-surface">
-                        {questDetail?.area ? `Area Code ${questDetail.area}` : 'Maple Island & Victoria Island'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between px-3.5 py-2">
-                      <span className="font-body-md text-on-surface-variant">Quest Registry ID</span>
-                      <span className="font-code text-body-sm font-semibold text-primary">
-                        #{selectedId}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded bg-surface-container-low border border-outline-variant/20">
-                    <span className="font-code text-[11px] uppercase tracking-wider text-outline font-semibold block mb-1">
-                      Pre-requisites to Start
-                    </span>
-                    <p className="font-body-sm text-[12px] text-on-surface">
-                      Must have reached Character Level {reqLevel}. Check with local town NPCs and quest notices across Maple World.
-                    </p>
                   </div>
                 </div>
               )}
 
               {currentTab === 'rewards' && (
-                <div className="space-y-4">
-                  <div className="font-code text-[11px] uppercase tracking-wider text-outline font-semibold">
+                <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col gap-2 text-xs">
+                  <span className="font-bold text-on-surface uppercase tracking-wider text-outline">
                     Completion Yield & Rewards
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded bg-surface-container-lowest border border-outline-variant/20 shadow-xs">
-                      <span className="text-[11px] font-code text-outline uppercase block">Experience Yield</span>
-                      <span className="font-code text-[15px] font-bold text-primary mt-0.5 block">
-                        +{((reqLevel * 120) + 150).toLocaleString()} EXP
-                      </span>
+                  </span>
+                  <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex items-center justify-between font-code">
+                      <span>EXP Awarded:</span>
+                      <strong className="text-amber-700 font-bold">+{(reqLevel * 120 + 50).toLocaleString()} EXP</strong>
                     </div>
-                    <div className="p-3 rounded bg-surface-container-lowest border border-outline-variant/20 shadow-xs">
-                      <span className="text-[11px] font-code text-outline uppercase block">Meso Reward</span>
-                      <span className="font-code text-[15px] font-bold text-amber-600 mt-0.5 block">
-                        +{((reqLevel * 250) + 500).toLocaleString()} Mesos
-                      </span>
+                    <div className="flex items-center justify-between font-code">
+                      <span>Mesos Awarded:</span>
+                      <strong className="text-on-surface font-bold">+{(reqLevel * 250).toLocaleString()} Mesos</strong>
                     </div>
-                  </div>
-                  <div className="p-3 rounded bg-surface-container-low border border-outline-variant/20 text-body-sm text-on-surface-variant">
-                    Completing this quest may also award fame, town return scrolls, or equip upgrade scrolls depending on your dialogue choices.
                   </div>
                 </div>
               )}
 
               {currentTab === 'dialogue' && (
-                <div className="space-y-3">
-                  <div className="font-code text-[11px] uppercase tracking-wider text-outline font-semibold">
-                    Quest Script & Lore
-                  </div>
-                  {questDetail?.messages && questDetail.messages.length > 0 ? (
-                    <div className="space-y-2">
-                      {questDetail.messages.map((msg, i) => (
-                        <div key={i} className="p-3 rounded bg-surface-container-lowest border border-outline-variant/20 text-body-md text-on-surface">
-                          {msg}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded bg-surface-container-lowest border border-outline-variant/20">
-                      <p className="text-body-md text-on-surface italic">
-                        "Help the inhabitants of Maple World to earn experience points and rare items for Level {reqLevel} adventurers."
-                      </p>
-                    </div>
-                  )}
+                <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 text-xs text-on-surface-variant leading-relaxed">
+                  &ldquo;Traveler, I have an urgent request. Help the residents of the island and overcome the trials to restore balance.&rdquo;
                 </div>
               )}
             </div>
           )}
         </div>
       </div>
-
-      {/* Hairline Metadata Footer Bar */}
-      <footer className="h-7 px-4 border-t border-outline-variant/20 bg-surface-container-low/70 flex items-center justify-between text-[11px] font-code text-on-surface-variant flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <span>
-            WZ Node: <strong className="text-on-surface font-semibold">{selectedId}</strong>
-          </span>
-          <span>•</span>
-          <span>
-            Package: <strong className="text-on-surface font-semibold">{effectiveCategory}</strong>
-          </span>
-        </div>
-        <div>
-          <span>{region} v.{version} Classic World</span>
-        </div>
-      </footer>
-
-      {/* JSON Inspector Slide-over Modal */}
-      <JsonModal
-        isOpen={jsonModalOpen}
-        onClose={() => setJsonModalOpen(false)}
-        title={`${entityTitle} (${selectedId})`}
-        data={currentDetailData}
-      />
     </section>
   );
 };
