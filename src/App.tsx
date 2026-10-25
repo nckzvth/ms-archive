@@ -23,7 +23,6 @@ import { InspectorVitrine } from './components/layout/InspectorVitrine';
 import { CommandPalette } from './components/common/CommandPalette';
 import { BookmarksDrawer } from './components/common/BookmarksDrawer';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { HomePage } from './components/home/HomePage';
 import {
   RegistryCategory,
   SearchEntity,
@@ -71,9 +70,11 @@ export const App: React.FC = () => {
     state.category === 'use' ||
     state.category === 'etc' ||
     state.category === 'setup' ||
-    state.category === 'cash';
+    state.category === 'cash' ||
+    state.category === 'all';
 
   const overallFilterMap: Record<string, string> = {
+    all: 'Equip',
     equips: 'Equip',
     use: 'Use',
     etc: 'Etc',
@@ -84,7 +85,7 @@ export const App: React.FC = () => {
   // Determine effective subcategory to avoid massive unfiltered downloads
   const effectiveSubCategory = useMemo(() => {
     if (state.subCategory) return state.subCategory;
-    if (state.category === 'equips') return 'One-Handed Sword';
+    if (state.category === 'equips' || state.category === 'all') return 'One-Handed Sword';
     if (state.category === 'use') return 'Potion';
     if (state.category === 'etc') return 'Monster Drop';
     if (state.category === 'setup') return 'Chair';
@@ -255,6 +256,25 @@ export const App: React.FC = () => {
 
   // Transform active items for StreamFeed safely
   const feedItems: FeedEntity[] = useMemo(() => {
+    if (state.category === 'all') {
+      const allList: FeedEntity[] = [];
+      if (Array.isArray(rawItems)) {
+        rawItems.filter(Boolean).forEach((item) => allList.push({ ...item, entityType: 'item' as const }));
+      }
+      if (Array.isArray(rawMobs)) {
+        rawMobs.filter(Boolean).forEach((mob) => allList.push({ ...mob, entityType: 'mob' as const }));
+      }
+      if (Array.isArray(rawMaps)) {
+        rawMaps.filter(Boolean).forEach((map) => allList.push({ ...map, entityType: 'map' as const }));
+      }
+      if (Array.isArray(rawNpcs)) {
+        rawNpcs.filter(Boolean).forEach((npc) => allList.push({ ...npc, entityType: 'npc' as const }));
+      }
+      if (Array.isArray(rawQuests)) {
+        rawQuests.filter(Boolean).forEach((quest) => allList.push({ ...quest, entityType: 'quest' as const }));
+      }
+      return allList;
+    }
     if (isItemCategory && Array.isArray(rawItems)) {
       return rawItems.filter(Boolean).map((item) => ({ ...item, entityType: 'item' as const }));
     }
@@ -302,13 +322,31 @@ export const App: React.FC = () => {
     return feedItems.find((i) => i.id === effectiveSelectedId) || null;
   }, [feedItems, effectiveSelectedId]);
 
+  // Derive effective category for entity detail queries
+  const effectiveCategory = useMemo(() => {
+    if (state.category !== 'all') return state.category;
+    if (selectedSummary?.entityType === 'mob') return 'monsters';
+    if (selectedSummary?.entityType === 'map') return 'maps';
+    if (selectedSummary?.entityType === 'npc') return 'npcs';
+    if (selectedSummary?.entityType === 'quest') return 'quests';
+    if (selectedSummary?.entityType === 'item') return 'equips';
+    return 'equips';
+  }, [state.category, selectedSummary]);
+
+  const isEffectiveItemCategory =
+    effectiveCategory === 'equips' ||
+    effectiveCategory === 'use' ||
+    effectiveCategory === 'etc' ||
+    effectiveCategory === 'setup' ||
+    effectiveCategory === 'cash';
+
   // 9. Fetch Selected Entity Detail
   const selectedId = effectiveSelectedId;
 
   const { data: itemDetail = null, isLoading: itemDetailLoading } = useQuery({
     queryKey: ['itemDetail', state.region, state.version, selectedId],
     queryFn: () => (selectedId ? fetchItemDetail(state.region, state.version, selectedId) : null),
-    enabled: isItemCategory && !!selectedId,
+    enabled: isEffectiveItemCategory && !!selectedId,
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 30,
   });
@@ -316,7 +354,7 @@ export const App: React.FC = () => {
   const { data: mobDetail = null, isLoading: mobDetailLoading } = useQuery({
     queryKey: ['mobDetail', state.region, state.version, selectedId],
     queryFn: () => (selectedId ? fetchMobDetail(state.region, state.version, selectedId) : null),
-    enabled: state.category === 'monsters' && !!selectedId,
+    enabled: effectiveCategory === 'monsters' && !!selectedId,
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 30,
   });
@@ -324,7 +362,7 @@ export const App: React.FC = () => {
   const { data: mapDetail = null, isLoading: mapDetailLoading } = useQuery({
     queryKey: ['mapDetail', state.region, state.version, selectedId],
     queryFn: () => (selectedId ? fetchMapDetail(state.region, state.version, selectedId) : null),
-    enabled: state.category === 'maps' && !!selectedId,
+    enabled: effectiveCategory === 'maps' && !!selectedId,
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 30,
   });
@@ -332,7 +370,7 @@ export const App: React.FC = () => {
   const { data: npcDetail = null, isLoading: npcDetailLoading } = useQuery({
     queryKey: ['npcDetail', state.region, state.version, selectedId],
     queryFn: () => (selectedId ? fetchNpcDetail(state.region, state.version, selectedId) : null),
-    enabled: state.category === 'npcs' && !!selectedId,
+    enabled: effectiveCategory === 'npcs' && !!selectedId,
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 30,
   });
@@ -340,7 +378,7 @@ export const App: React.FC = () => {
   const { data: questDetail = null, isLoading: questDetailLoading } = useQuery({
     queryKey: ['questDetail', state.region, state.version, selectedId],
     queryFn: () => (selectedId ? fetchQuestDetail(state.region, state.version, selectedId) : null),
-    enabled: state.category === 'quests' && !!selectedId,
+    enabled: effectiveCategory === 'quests' && !!selectedId,
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 30,
   });
@@ -358,7 +396,6 @@ export const App: React.FC = () => {
   // Handle navigation from internal clicks (e.g. from spawn maps, scrolls, or command palette)
   const handleNavigateToEntity = (cat: RegistryCategory, id: number, sub?: string) => {
     updateState({
-      view: 'workspace',
       category: cat,
       subCategory: sub || '',
       selectedId: id,
@@ -393,9 +430,6 @@ export const App: React.FC = () => {
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-surface font-body-md text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-fixed">
       {/* Top Global App Header */}
       <Header
-        view={state.view}
-        onNavigateHome={() => updateState({ view: 'home' })}
-        onNavigateWorkspace={() => updateState({ view: 'workspace' })}
         region={state.region}
         version={state.version}
         category={state.category}
@@ -408,121 +442,104 @@ export const App: React.FC = () => {
         onToggleInspector={() => setInspectorOpen((prev) => !prev)}
       />
 
-      {/* Main View: Homepage Hub vs 3-Column Split View Workspace */}
-      {state.view === 'home' ? (
-        <HomePage
-          region={state.region}
-          version={state.version}
-          mobsCount={rawMobs.length || 101}
-          mapsCount={rawMaps.length || 318}
-          npcsCount={rawNpcs.length || 226}
-          questsCount={rawQuests.length || 316}
-          onSelectCategory={(cat, sub, grp, pill) => {
-            updateState({
-              view: 'workspace',
-              category: cat,
-              subCategory: sub,
-              group: grp || '',
-              filterPill: pill || (cat === 'quests' ? (sub || 'All') : 'All'),
-              selectedId: null,
-              activeTab: 'overview',
-            });
-          }}
-          onSelectEntity={(cat, id, sub) => {
-            handleNavigateToEntity(cat, id, sub);
-          }}
-          onOpenWorkspace={() => updateState({ view: 'workspace' })}
-        />
-      ) : (
-        <main className="flex-1 flex overflow-hidden w-full relative">
-          {/* Pane 1: Left Taxonomy Tree */}
-          <ErrorBoundary fallbackTitle="Taxonomy Tree">
-            <SidebarTree
-              activeCategory={state.category}
-              activeSubCategory={state.subCategory || effectiveSubCategory}
-              activeGroup={state.group}
-              onSelect={(cat, sub, grp) =>
-                updateState({
-                  view: 'workspace',
-                  category: cat,
-                  subCategory: sub,
-                  group: grp || '',
-                  filterPill: cat === 'quests' ? (sub || 'All') : 'All',
-                  selectedId: null,
-                  activeTab: 'overview',
-                })
-              }
-              categoryTree={categoryTree}
-              mobsCount={rawMobs.length || 101}
-              mapsCount={rawMaps.length || 318}
-              npcsCount={rawNpcs.length || 226}
-              questsCount={rawQuests.length || 316}
-              maps={rawMaps}
-              region={state.region}
-              version={state.version}
-            />
-          </ErrorBoundary>
+      {/* Seamless 3-Column Split View Workspace */}
+      <main className="flex-1 flex overflow-hidden w-full relative">
+        {/* Pane 1: Left Taxonomy Tree */}
+        <ErrorBoundary fallbackTitle="Taxonomy Tree">
+          <SidebarTree
+            activeCategory={state.category}
+            activeSubCategory={state.subCategory || effectiveSubCategory}
+            activeGroup={state.group}
+            onSelect={(cat, sub, grp) =>
+              updateState({
+                category: cat,
+                subCategory: sub,
+                group: grp || '',
+                filterPill: cat === 'quests' ? (sub || 'All') : 'All',
+                selectedId: null,
+                activeTab: 'overview',
+              })
+            }
+            categoryTree={categoryTree}
+            mobsCount={rawMobs.length || 101}
+            mapsCount={rawMaps.length || 318}
+            npcsCount={rawNpcs.length || 226}
+            questsCount={rawQuests.length || 316}
+            maps={rawMaps}
+            region={state.region}
+            version={state.version}
+          />
+        </ErrorBoundary>
 
-          {/* Pane 2: Middle Stream Feed */}
-          <ErrorBoundary fallbackTitle="Stream Feed">
-            <StreamFeed
+        {/* Pane 2: Middle Stream Feed (Flexible width flex-1) */}
+        <ErrorBoundary fallbackTitle="Stream Feed">
+          <StreamFeed
+            category={state.category}
+            subCategory={state.subCategory || effectiveSubCategory}
+            items={feedItems}
+            selectedId={selectedId}
+            onSelectId={(id) => updateState({ selectedId: id })}
+            filterPill={state.category === 'quests' && state.subCategory ? state.subCategory : state.filterPill}
+            onFilterPillChange={(pill) =>
+              updateState({
+                filterPill: pill,
+                subCategory: state.category === 'quests' ? (pill === 'All' ? '' : pill) : state.subCategory,
+              })
+            }
+            sortBy={state.sortBy}
+            sortDirection={state.sortDirection}
+            onToggleSort={(col) => {
+              if (state.sortBy === col) {
+                updateState({ sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc' });
+              } else {
+                updateState({ sortBy: col, sortDirection: 'asc' });
+              }
+            }}
+            region={state.region}
+            version={state.version}
+            isLoading={isFeedLoading}
+            onSelectCategory={(cat, sub, grp, pill) => {
+              updateState({
+                category: cat,
+                subCategory: sub || '',
+                group: grp || '',
+                filterPill: pill || 'All',
+                selectedId: null,
+                activeTab: 'overview',
+              });
+            }}
+          />
+        </ErrorBoundary>
+
+        {/* Pane 3: Right Inspector & Sprite Vitrine (Compact fixed w-[460px]) */}
+        {inspectorOpen && (
+          <ErrorBoundary fallbackTitle="Inspector Vitrine">
+            <InspectorVitrine
               category={state.category}
               subCategory={state.subCategory || effectiveSubCategory}
-              items={feedItems}
               selectedId={selectedId}
-              onSelectId={(id) => updateState({ selectedId: id })}
-              filterPill={state.category === 'quests' && state.subCategory ? state.subCategory : state.filterPill}
-              onFilterPillChange={(pill) =>
-                updateState({
-                  filterPill: pill,
-                  subCategory: state.category === 'quests' ? (pill === 'All' ? '' : pill) : state.subCategory,
-                })
-              }
-              sortBy={state.sortBy}
-              sortDirection={state.sortDirection}
-              onToggleSort={(col) => {
-                if (state.sortBy === col) {
-                  updateState({ sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc' });
-                } else {
-                  updateState({ sortBy: col, sortDirection: 'asc' });
-                }
-              }}
+              selectedSummary={selectedSummary}
+              activeTab={state.activeTab}
+              onChangeTab={(t) => updateState({ activeTab: t })}
               region={state.region}
               version={state.version}
-              isLoading={isFeedLoading}
+              itemDetail={itemDetail}
+              mobDetail={mobDetail}
+              mapDetail={mapDetail}
+              npcDetail={npcDetail}
+              questDetail={questDetail}
+              allMaps={rawMaps}
+              allMobs={rawMobs}
+              allQuests={rawQuests}
+              allScrolls={rawScrolls}
+              onNavigateToEntity={handleNavigateToEntity}
+              isBookmarked={selectedId ? isBookmarked(selectedId, state.category) : false}
+              onToggleBookmark={handleToggleActiveBookmark}
+              isLoading={isInspectorLoading}
             />
           </ErrorBoundary>
-
-          {/* Pane 3: Right Inspector & Sprite Vitrine */}
-          {inspectorOpen && (
-            <ErrorBoundary fallbackTitle="Inspector Vitrine">
-              <InspectorVitrine
-                category={state.category}
-                subCategory={state.subCategory || effectiveSubCategory}
-                selectedId={selectedId}
-                selectedSummary={selectedSummary}
-                activeTab={state.activeTab}
-                onChangeTab={(t) => updateState({ activeTab: t })}
-                region={state.region}
-                version={state.version}
-                itemDetail={itemDetail}
-                mobDetail={mobDetail}
-                mapDetail={mapDetail}
-                npcDetail={npcDetail}
-                questDetail={questDetail}
-                allMaps={rawMaps}
-                allMobs={rawMobs}
-                allQuests={rawQuests}
-                allScrolls={rawScrolls}
-                onNavigateToEntity={handleNavigateToEntity}
-                isBookmarked={selectedId ? isBookmarked(selectedId, state.category) : false}
-                onToggleBookmark={handleToggleActiveBookmark}
-                isLoading={isInspectorLoading}
-              />
-            </ErrorBoundary>
-          )}
-        </main>
-      )}
+        )}
+      </main>
 
       {/* Global ⌘K Command Palette Spotlight */}
       <CommandPalette

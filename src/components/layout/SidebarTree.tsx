@@ -227,6 +227,24 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
 
         {/* Tree Nodes List */}
         <div className="p-1.5 space-y-0.5 text-body-sm font-body-sm">
+          {/* 0. ROOT NODE: ALL ARCHIVES */}
+          <div
+            onClick={() => onSelect('all', '', '')}
+            className={`flex items-center justify-between px-2 py-1 rounded cursor-pointer transition-colors ${
+              activeCategory === 'all'
+                ? 'bg-surface-container text-on-surface font-semibold border-l-2 border-l-amber-500 shadow-xs'
+                : 'text-on-surface-variant hover:bg-surface-container/50'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span className="truncate text-[12.5px]">All Archives</span>
+            </div>
+            <span className="font-code text-[10px] text-outline opacity-80 tabular-nums">
+              {totalItemsCount}
+            </span>
+          </div>
+
           {/* 1. ROOT NODE: EQUIPS (Character.wz) */}
           <div className="flex flex-col">
             <div

@@ -108,12 +108,21 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
   // UNCONDITIONAL HOOKS (Ensures React Hook Order is 100% constant on every render)
   // =========================================================================
 
-  // 1. Compatible scrolls for Equip
-  const compatibleScrolls = useMemo(() => {
-    if (!selectedId || category !== 'equips') return [];
-    const itemSub = (itemDetail?.typeInfo?.subCategory || subCategory || '').toLowerCase();
+  // Compute effective category (if viewing 'all', infer category from selectedSummary)
+  const effectiveCategory: RegistryCategory = useMemo(() => {
+    if (category !== 'all') return category;
+    if (selectedSummary?.entityType === 'mob') return 'monsters';
+    if (selectedSummary?.entityType === 'map') return 'maps';
+    if (selectedSummary?.entityType === 'npc') return 'npcs';
+    if (selectedSummary?.entityType === 'quest') return 'quests';
+    if (selectedSummary?.entityType === 'item') return 'equips';
+    return 'equips';
+  }, [category, selectedSummary]);
 
-    // Normalize target matching
+  // 1. Enhancement Scrolls
+  const compatibleScrolls = useMemo(() => {
+    if (!selectedId || effectiveCategory !== 'equips') return [];
+    const itemSub = (itemDetail?.typeInfo?.subCategory || subCategory || '').toLowerCase();
     let target = itemSub;
     if (target.includes('sword')) target = 'sword';
     else if (target.includes('axe')) target = 'axe';
@@ -140,7 +149,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       const scrollName = (s.name || '').toLowerCase();
       return scrollName.includes(target) || scrollName.includes('for att') || scrollName.includes('for def');
     });
-  }, [category, selectedId, itemDetail, subCategory, allScrolls]);
+  }, [effectiveCategory, selectedId, itemDetail, subCategory, allScrolls]);
 
   // 2. Quests
   const relatedQuests = useMemo(() => {
@@ -150,7 +159,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
 
   // 3. Spawn maps for monster
   const spawnMaps = useMemo(() => {
-    if (!selectedId || category !== 'monsters') return [];
+    if (!selectedId || effectiveCategory !== 'monsters') return [];
     if (mobDetail?.foundAt && Array.isArray(mobDetail.foundAt) && mobDetail.foundAt.length > 0) {
       return mobDetail.foundAt.map((mapId) => {
         const found = allMaps.find((m) => m.id === mapId);
@@ -167,11 +176,11 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       name: m.name,
       streetName: m.streetName,
     }));
-  }, [category, selectedId, mobDetail, allMaps]);
+  }, [effectiveCategory, selectedId, mobDetail, allMaps]);
 
   // 4. Deduplicated Mobs on Map
   const mapMobs = useMemo(() => {
-    if (!selectedId || category !== 'maps') return [];
+    if (!selectedId || effectiveCategory !== 'maps') return [];
     if (mapDetail?.mobs && Array.isArray(mapDetail.mobs) && mapDetail.mobs.length > 0) {
       const countMap = new Map<number, number>();
       mapDetail.mobs.forEach((m) => {
@@ -197,39 +206,39 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       level: m.level,
       count: 5,
     }));
-  }, [category, selectedId, mapDetail, allMobs]);
+  }, [effectiveCategory, selectedId, mapDetail, allMobs]);
 
   // 5. Segmented Tabs list according to active category
   const tabs = useMemo(() => {
-    if (category === 'equips') {
+    if (effectiveCategory === 'equips') {
       return [
         { id: 'overview', label: 'Overview' },
         { id: 'scrolls', label: 'Scrolls', count: compatibleScrolls.length },
         { id: 'quests', label: 'Quests', count: relatedQuests.length },
       ];
     }
-    if (category === 'monsters') {
+    if (effectiveCategory === 'monsters') {
       return [
         { id: 'overview', label: 'Vitals & Combat' },
         { id: 'spawns', label: 'Spawn Maps', count: spawnMaps.length },
         { id: 'quests', label: 'Related Quests', count: relatedQuests.length },
       ];
     }
-    if (category === 'maps') {
+    if (effectiveCategory === 'maps') {
       return [
         { id: 'overview', label: 'Overview' },
         { id: 'monsters', label: 'Monsters', count: mapMobs.length },
         { id: 'portals', label: 'NPCs & Portals', count: (mapDetail?.npcs?.length || 0) + (mapDetail?.portals?.length || 0) },
       ];
     }
-    if (category === 'npcs') {
+    if (effectiveCategory === 'npcs') {
       return [
         { id: 'overview', label: 'Dialogue & Details' },
         { id: 'spawns', label: 'Location Maps', count: npcDetail?.foundAt?.length || 1 },
         { id: 'quests', label: 'Quests', count: npcDetail?.relatedQuests?.length || 2 },
       ];
     }
-    if (category === 'quests') {
+    if (effectiveCategory === 'quests') {
       return [
         { id: 'overview', label: 'Requirements & Level' },
         { id: 'rewards', label: 'Rewards & Yield' },
@@ -237,14 +246,14 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       ];
     }
     return [{ id: 'overview', label: 'Overview' }];
-  }, [category, compatibleScrolls.length, relatedQuests.length, spawnMaps.length, mapMobs.length, mapDetail, npcDetail]);
+  }, [effectiveCategory, compatibleScrolls.length, relatedQuests.length, spawnMaps.length, mapMobs.length, mapDetail, npcDetail]);
 
   const currentTab = tabs.some((t) => t.id === activeTab) ? activeTab : 'overview';
 
   // Early return for unselected state (only AFTER all hooks are called)
   if (!selectedId) {
     return (
-      <section className="flex-1 flex flex-col items-center justify-center h-full bg-surface text-on-surface-variant font-body-sm p-8 text-center select-none">
+      <section className="w-[460px] flex-shrink-0 flex flex-col items-center justify-center h-full bg-surface text-on-surface-variant font-body-sm p-8 text-center select-none border-l border-outline-variant/30">
         <Shield className="w-12 h-12 text-outline-variant mb-3 opacity-40" />
         <h2 className="font-headline-md text-on-surface font-semibold">Select an Entity</h2>
         <p className="text-body-sm text-outline mt-1 max-w-sm">
@@ -279,7 +288,13 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
   let entityWzPath = '';
   let reqLevel = 0;
 
-  if (category === 'equips' || category === 'use' || category === 'etc' || category === 'setup' || category === 'cash') {
+  if (
+    effectiveCategory === 'equips' ||
+    effectiveCategory === 'use' ||
+    effectiveCategory === 'etc' ||
+    effectiveCategory === 'setup' ||
+    effectiveCategory === 'cash'
+  ) {
     entityTitle = itemDetail?.description?.name || selectedSummary?.name || `Item #${selectedId}`;
     reqLevel =
       itemDetail?.metaInfo?.reqLevel ??
@@ -292,10 +307,10 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
     const jobStr = itemDetail?.metaInfo?.reqJob !== undefined ? decodeReqJob(itemDetail.metaInfo.reqJob) : 'All Jobs';
     const speedStr = itemDetail?.metaInfo?.attackSpeed ? ` • Speed: ${formatAttackSpeed(itemDetail.metaInfo.attackSpeed)}` : '';
     entitySubtitle = `${subCat} • ${jobStr}${speedStr}`;
-    entityWzPath = `${category === 'equips' ? 'Character.wz' : 'Item.wz'} / ${
+    entityWzPath = `${effectiveCategory === 'equips' ? 'Character.wz' : 'Item.wz'} / ${
       itemDetail?.typeInfo?.category || 'Item'
     } / 0${selectedId}.img`;
-  } else if (category === 'monsters') {
+  } else if (effectiveCategory === 'monsters') {
     entityTitle = mobDetail?.name || selectedSummary?.name || `Monster #${selectedId}`;
     reqLevel =
       mobDetail?.meta?.level ??
@@ -303,16 +318,16 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
     const expVal = mobDetail?.meta?.exp ?? 0;
     entitySubtitle = `Mob • Level ${reqLevel} • EXP ${expVal}`;
     entityWzPath = `Mob.wz / ${selectedId}.img`;
-  } else if (category === 'maps') {
+  } else if (effectiveCategory === 'maps') {
     entityTitle = mapDetail?.name || selectedSummary?.name || `Map #${selectedId}`;
     const stName = mapDetail?.streetName || (selectedSummary && 'streetName' in selectedSummary ? selectedSummary.streetName : 'World');
     entitySubtitle = `${stName} • ${mapDetail?.isTown ? 'Town' : 'Field'}`;
     entityWzPath = `Map.wz / Map / ${selectedId}.img`;
-  } else if (category === 'npcs') {
+  } else if (effectiveCategory === 'npcs') {
     entityTitle = npcDetail?.name || selectedSummary?.name || `NPC #${selectedId}`;
     entitySubtitle = `Resident NPC • ${npcDetail?.isShop ? 'Merchant Shop' : 'Dialogue Script'}`;
     entityWzPath = `Npc.wz / ${selectedId}.img`;
-  } else if (category === 'quests') {
+  } else if (effectiveCategory === 'quests') {
     entityTitle = questDetail?.name || selectedSummary?.name || `Quest #${selectedId}`;
     reqLevel =
       questDetail?.minLevel ??
@@ -331,20 +346,25 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
   let bgmUrl: string | undefined = undefined;
   let bgmTrackName: string | undefined = undefined;
 
-  if (category === 'equips') {
+  if (effectiveCategory === 'equips') {
     canvasImageUrl = getCharacterMannequinUrl(region, version, selectedId, activeAction);
     canvasFallbackUrl = getItemIconRawUrl(region, version, selectedId);
     canvasActions = ['stand1', 'walk1', 'swingO1', 'stabO1'];
     originCoord = itemDetail?.metaInfo?.iconRawOrigin || itemDetail?.metaInfo?.iconOrigin || { x: 0, y: 0 };
-  } else if (category === 'use' || category === 'etc' || category === 'setup' || category === 'cash') {
+  } else if (
+    effectiveCategory === 'use' ||
+    effectiveCategory === 'etc' ||
+    effectiveCategory === 'setup' ||
+    effectiveCategory === 'cash'
+  ) {
     canvasImageUrl = getItemIconRawUrl(region, version, selectedId);
     canvasFallbackUrl = getItemIconUrl(region, version, selectedId);
     originCoord = itemDetail?.metaInfo?.iconRawOrigin || { x: 0, y: 0 };
-  } else if (category === 'monsters') {
+  } else if (effectiveCategory === 'monsters') {
     canvasImageUrl = getMobRenderUrl(region, version, selectedId, activeAction);
     canvasFallbackUrl = getMobIconUrl(region, version, selectedId);
     canvasActions = mobDetail?.framebooks ? Object.keys(mobDetail.framebooks) : ['stand', 'move', 'hit1', 'die1'];
-  } else if (category === 'maps') {
+  } else if (effectiveCategory === 'maps') {
     canvasImageUrl = isMinimapMode
       ? getMapMinimapUrl(region, version, selectedId)
       : getMapRenderUrl(region, version, selectedId);
@@ -353,19 +373,17 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       bgmUrl = getMapMusicUrl(region, version, mapDetail.backgroundMusic);
       bgmTrackName = mapDetail.backgroundMusic;
     }
-  } else if (category === 'npcs') {
+  } else if (effectiveCategory === 'npcs') {
     canvasImageUrl = getNpcRenderUrl(region, version, selectedId);
     canvasFallbackUrl = getNpcIconUrl(region, version, selectedId);
-  } else if (category === 'quests') {
+  } else if (effectiveCategory === 'quests') {
     canvasImageUrl = getItemIconUrl(region, version, 4030000);
   }
 
-
-
   return (
-    <section className="flex-1 flex flex-col h-full bg-surface overflow-hidden select-text">
+    <section className="w-[460px] flex-shrink-0 flex flex-col h-full bg-surface overflow-hidden select-text border-l border-outline-variant/30">
       {/* Top Header Actions Strip */}
-      <div className="h-10 px-space-xl border-b border-outline-variant/30 bg-surface/50 flex items-center justify-between flex-shrink-0">
+      <div className="h-10 px-4 border-b border-outline-variant/30 bg-surface/50 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-1.5 text-body-sm font-code text-on-surface-variant truncate">
           <span className="truncate">{entityWzPath}</span>
         </div>
@@ -422,7 +440,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
             nodePathLabel={`${activeAction} [${selectedId}]`}
             bgmUrl={bgmUrl}
             bgmTrackName={bgmTrackName}
-            isMap={category === 'maps'}
+            isMap={effectiveCategory === 'maps'}
             mapMinimapUrl={getMapMinimapUrl(region, version, selectedId)}
             isMinimapMode={isMinimapMode}
             onToggleMinimapMode={() => setIsMinimapMode(!isMinimapMode)}
@@ -446,7 +464,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
 
             {/* Quick Stats Pill Matrix */}
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              {category === 'equips' && itemDetail?.metaInfo && (
+              {effectiveCategory === 'equips' && itemDetail?.metaInfo && (
                 <>
                   <span className="px-2 py-0.5 rounded bg-surface-container-high font-label-sm text-[11px] text-on-surface">
                     REQ STR: {itemDetail.metaInfo.reqSTR || 0}
@@ -484,7 +502,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                 </>
               )}
 
-              {category === 'monsters' && mobDetail?.meta && (
+              {effectiveCategory === 'monsters' && mobDetail?.meta && (
                 <>
                   <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
                     <strong className="text-outline">HP:</strong>{' '}
@@ -509,7 +527,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                 </>
               )}
 
-              {category === 'maps' && mapDetail && (
+              {effectiveCategory === 'maps' && mapDetail && (
                 <>
                   <span className="px-2 py-0.5 rounded bg-surface-container font-code text-[11px] border border-outline-variant/30">
                     <strong className="text-outline">Type:</strong> {mapDetail.isTown ? 'Town' : 'Field'}
@@ -527,7 +545,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                 </>
               )}
 
-              {category === 'quests' && (
+              {effectiveCategory === 'quests' && (
                 <>
                   <span className="px-2.5 py-0.5 rounded bg-amber-500/15 text-amber-700 font-code text-[11px] font-bold border border-amber-500/30">
                     Required Level: Lv. {reqLevel}+
@@ -548,15 +566,15 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
         </div>
 
         {/* Segmented Navigation Tab Bar */}
-        <div className="px-space-lg pt-2 pb-0 border-b border-outline-variant/20 bg-surface flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-space-lg text-body-md">
+        <div className="px-4 pt-2 pb-0 border-b border-outline-variant/20 bg-surface flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-4 text-body-md overflow-x-auto no-scrollbar">
             {tabs.map((tab) => {
               const isActive = currentTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => onChangeTab(tab.id)}
-                  className={`pb-2 border-b-2 flex items-center gap-1.5 transition-colors font-medium text-body-sm cursor-pointer ${
+                  className={`pb-2 border-b-2 flex items-center gap-1.5 transition-colors font-medium text-body-sm whitespace-nowrap cursor-pointer ${
                     isActive
                       ? 'border-amber-500 text-on-surface font-semibold'
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
@@ -575,50 +593,50 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
         </div>
 
         {/* Dynamic Tab Content Area */}
-        <div className="p-space-lg">
+        <div className="p-4">
           {/* ============================================================== */}
           {/* 1. EQUIPMENT TABS */}
           {/* ============================================================== */}
-          {category === 'equips' && (
+          {effectiveCategory === 'equips' && (
             <>
               {currentTab === 'overview' && (
-                <div className="flex flex-col gap-space-lg">
+                <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
                     <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
-                      Player-Centric Equipment Statistics
+                      Equipment Statistics
                     </span>
                     <span className="font-code text-code text-on-surface-variant">WZ Node Property Map</span>
                   </div>
 
-                  <div className="grid grid-cols-2 rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs">
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                  <div className="flex flex-col rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-[12.5px]">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Required Level</span>
                       <span className="font-code text-body-sm font-semibold text-on-surface">
                         {itemDetail?.metaInfo?.reqLevel ?? reqLevel ?? 0}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Required Job</span>
                       <span className="font-body-md font-medium text-on-surface">
                         {decodeReqJob(itemDetail?.metaInfo?.reqJob)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Required Attributes</span>
                       <div className="text-right">
                         <span className="font-code text-body-sm font-semibold text-primary">
                           REQ STR: {itemDetail?.metaInfo?.reqSTR || 0}
                         </span>
-                        <div className="font-code text-code text-on-surface-variant">
+                        <div className="font-code text-code text-on-surface-variant text-[11px]">
                           DEX: {itemDetail?.metaInfo?.reqDEX || 0} • INT: {itemDetail?.metaInfo?.reqINT || 0} • LUK:{' '}
                           {itemDetail?.metaInfo?.reqLUK || 0}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Weapon / Magic Attack</span>
                       <div className="text-right font-code text-body-sm font-semibold text-primary">
                         {(itemDetail?.metaInfo?.incWAT || itemDetail?.metaInfo?.incPAD)
@@ -630,28 +648,28 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Physical / Magic Defense</span>
                       <span className="font-code text-body-sm font-medium text-on-surface">
                         +{((itemDetail?.metaInfo?.incWDD ?? itemDetail?.metaInfo?.incPDD) || 0)} PDD • +{(itemDetail?.metaInfo?.incMDD || 0)} MDD
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Attack Speed</span>
                       <span className="font-code text-body-sm font-medium text-on-surface">
                         {formatAttackSpeed(itemDetail?.metaInfo?.attackSpeed)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Upgrade Slots Available</span>
                       <span className="font-code text-body-sm font-semibold text-primary">
                         {itemDetail?.metaInfo?.tuc ?? 7} slots
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Shop Price (Mesos)</span>
                       <span className="font-code text-body-sm font-medium text-on-surface tabular-nums">
                         {(itemDetail?.metaInfo?.price || 1).toLocaleString()} Mesos
@@ -739,97 +757,92 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
           {/* ============================================================== */}
           {/* 2. MONSTER TABS */}
           {/* ============================================================== */}
-          {category === 'monsters' && (
+          {effectiveCategory === 'monsters' && (
             <>
               {currentTab === 'overview' && (
-                <div className="space-y-6">
-                  <div>
-                    <div className="font-code text-[11px] uppercase tracking-wider text-outline mb-3 font-semibold">
-                      Combat Metrics & Physiology
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
+                        Combat Metrics & Physiology
+                      </span>
+                      <span className="font-code text-code text-on-surface-variant">Mob.wz</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-10 gap-y-2 text-body-sm">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Physical Attack (PAD)</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {mobDetail?.meta?.physicalDamage ?? 10}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Magic Attack (MAD)</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {mobDetail?.meta?.magicDamage ?? 0}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Physical Defense (PDD)</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {mobDetail?.meta?.physicalDefense ?? 5}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Magic Defense (MDD)</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {mobDetail?.meta?.magicDefense ?? 5}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Accuracy</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {mobDetail?.meta?.accuracy ?? 10}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Avoidability</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {mobDetail?.meta?.evasion ?? 0}
-                          </span>
-                        </div>
+                    <div className="flex flex-col rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-[12px]">
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Physical Attack (PAD)</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {mobDetail?.meta?.physicalDamage ?? 10}
+                        </span>
                       </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Total Stamina Pool</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {(mobDetail?.meta?.maxHP ?? 100).toLocaleString()} HP / {(mobDetail?.meta?.maxMP ?? 50).toLocaleString()} MP
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Base EXP Yield</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {mobDetail?.meta?.exp ?? 10} EXP
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1 border-b border-outline-variant/20">
-                          <span className="font-code text-on-surface-variant text-[12px]">Movement Speed</span>
-                          <span className="font-code font-semibold text-on-surface">
-                            {mobDetail?.meta?.speed ?? 0}
-                          </span>
-                        </div>
-
-                        <div className="py-1 border-b border-outline-variant/20">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="font-code text-on-surface-variant text-[12px]">
-                              Elemental Affinities
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {decodeElementalAttributes(mobDetail?.meta?.elementalAttributes).length > 0 ? (
-                              decodeElementalAttributes(mobDetail?.meta?.elementalAttributes).map((elem) => (
-                                <span
-                                  key={elem.element}
-                                  className={`px-2 py-0.5 rounded text-[11px] font-code font-semibold border ${elem.pillClass}`}
-                                >
-                                  {elem.element}: {elem.multiplier}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-code bg-surface-container text-on-surface-variant">
-                                All Elements: Normal ×1.0
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Magic Attack (MAD)</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {mobDetail?.meta?.magicDamage ?? 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Physical Defense (PDD)</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {mobDetail?.meta?.physicalDefense ?? 5}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Magic Defense (MDD)</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {mobDetail?.meta?.magicDefense ?? 5}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Accuracy</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {mobDetail?.meta?.accuracy ?? 10}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Avoidability</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {mobDetail?.meta?.evasion ?? 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Total Stamina Pool</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {(mobDetail?.meta?.maxHP ?? 100).toLocaleString()} HP / {(mobDetail?.meta?.maxMP ?? 50).toLocaleString()} MP
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Base EXP Yield</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {mobDetail?.meta?.exp ?? 10} EXP
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant">Movement Speed</span>
+                        <span className="font-code font-semibold text-on-surface">
+                          {mobDetail?.meta?.speed ?? 0}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1.5 px-3.5 py-2">
+                        <span className="font-code text-on-surface-variant text-[11px] uppercase tracking-wider">
+                          Elemental Affinities
+                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {decodeElementalAttributes(mobDetail?.meta?.elementalAttributes).length > 0 ? (
+                            decodeElementalAttributes(mobDetail?.meta?.elementalAttributes).map((elem) => (
+                              <span
+                                key={elem.element}
+                                className={`px-2 py-0.5 rounded text-[11px] font-code font-semibold border ${elem.pillClass}`}
+                              >
+                                {elem.element}: {elem.multiplier}
                               </span>
-                            )}
-                          </div>
+                            ))
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[11px] font-code bg-surface-container text-on-surface-variant">
+                              All Elements: Normal ×1.0
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -843,7 +856,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                     Known Habitat Locations ({spawnMaps.length})
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {spawnMaps.map((map) => (
                       <div
                         key={map.id}
@@ -864,22 +877,28 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
               )}
 
               {currentTab === 'quests' && (
-                <div className="space-y-3">
-                  <div className="font-code text-[11px] uppercase tracking-wider text-outline font-semibold">
-                    Quests Requiring This Monster
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider opacity-70">
+                      Associated Quests ({relatedQuests.length})
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {allQuests.slice(0, 6).map((q) => (
+
+                  <div className="grid grid-cols-1 gap-2">
+                    {relatedQuests.map((quest) => (
                       <div
-                        key={q.id}
-                        onClick={() => onNavigateToEntity('quests', q.id)}
+                        key={quest.id}
+                        onClick={() => onNavigateToEntity('quests', quest.id)}
                         className="p-2.5 rounded bg-surface-container-lowest border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-between group shadow-xs"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <FileText className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                          <span className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate">
-                            {q.name}
-                          </span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-body-sm font-medium text-on-surface group-hover:text-primary truncate">
+                              {quest.name}
+                            </span>
+                            <span className="font-code text-[10px] text-outline">Quest #{quest.id}</span>
+                          </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-outline group-hover:text-primary flex-shrink-0" />
                       </div>
@@ -893,26 +912,26 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
           {/* ============================================================== */}
           {/* 3. MAP TABS */}
           {/* ============================================================== */}
-          {category === 'maps' && (
+          {effectiveCategory === 'maps' && (
             <>
               {currentTab === 'overview' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs">
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                  <div className="flex flex-col rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-[12.5px]">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Street Name</span>
                       <span className="font-body-md font-medium text-on-surface">{mapDetail?.streetName || 'World'}</span>
                     </div>
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Map Name</span>
                       <span className="font-body-md font-medium text-on-surface">{mapDetail?.name || entityTitle}</span>
                     </div>
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Return Map ID</span>
                       <span className="font-code text-body-sm font-semibold text-primary">
                         {mapDetail?.returnMap || 'Self'}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">BGM Node</span>
                       <span className="font-code text-body-sm text-on-surface truncate max-w-[200px]">
                         {mapDetail?.backgroundMusic || 'Bgm00/SleepyWood'}
@@ -933,7 +952,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                       No hostile monsters spawn on this safe map or town.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       {mapMobs.map((mob) => (
                         <div
                           key={mob.id}
@@ -970,7 +989,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                       Resident NPCs ({mapDetail?.npcs?.length || 0})
                     </div>
                     {mapDetail?.npcs && mapDetail.npcs.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2">
                         {mapDetail.npcs.map((npc, idx) => (
                           <div
                             key={`${npc.id}_${idx}`}
@@ -1003,7 +1022,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                       Connected Portals ({mapDetail?.portals?.length || 0})
                     </div>
                     {mapDetail?.portals && mapDetail.portals.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2">
                         {mapDetail.portals
                           .filter((p) => p && p.toMap && p.toMap !== 999999999)
                           .map((portal, idx) => (
@@ -1036,7 +1055,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
           {/* ============================================================== */}
           {/* 4. NPC & QUEST TABS */}
           {/* ============================================================== */}
-          {category === 'npcs' && (
+          {effectiveCategory === 'npcs' && (
             <div className="space-y-4">
               <div className="font-code text-[11px] uppercase tracking-wider text-outline font-semibold">
                 NPC Dialogue & Script Strings
@@ -1059,7 +1078,7 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
             </div>
           )}
 
-          {category === 'quests' && (
+          {effectiveCategory === 'quests' && (
             <div className="space-y-6">
               {currentTab === 'overview' && (
                 <div className="space-y-4">
@@ -1070,43 +1089,43 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
                     <span className="font-code text-code text-on-surface-variant">WZ Node Check.img</span>
                   </div>
 
-                  <div className="grid grid-cols-2 rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs">
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                  <div className="flex flex-col rounded-lg bg-surface-container-lowest border border-outline-variant/30 divide-y divide-outline-variant/20 shadow-xs text-[12.5px]">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Required Level</span>
                       <span className="font-code text-body-sm font-bold text-amber-600">
                         Lv. {reqLevel}+
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Level Progression Band</span>
                       <span className="font-body-md font-semibold text-on-surface">
                         {getQuestBandInfo(reqLevel).group} ({getQuestBandInfo(reqLevel).label})
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Target Player Range</span>
                       <span className="font-code text-body-sm font-medium text-on-surface">
                         Level {getQuestBandInfo(reqLevel).min} to {getQuestBandInfo(reqLevel).max < 200 ? getQuestBandInfo(reqLevel).max : 'Max'}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Eligible Job Classes</span>
                       <span className="font-body-md font-medium text-on-surface">
-                        All Explorer Classes (Warrior, Magician, Bowman, Thief, Pirate)
+                        All Explorer Classes
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5 border-r border-outline-variant/20">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Maple World Area</span>
                       <span className="font-code text-body-sm font-medium text-on-surface">
                         {questDetail?.area ? `Area Code ${questDetail.area}` : 'Maple Island & Victoria Island'}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between px-space-md py-2.5">
+                    <div className="flex items-center justify-between px-3.5 py-2">
                       <span className="font-body-md text-on-surface-variant">Quest Registry ID</span>
                       <span className="font-code text-body-sm font-semibold text-primary">
                         #{selectedId}
@@ -1178,14 +1197,14 @@ export const InspectorVitrine: React.FC<InspectorVitrineProps> = ({
       </div>
 
       {/* Hairline Metadata Footer Bar */}
-      <footer className="h-7 px-space-xl border-t border-outline-variant/20 bg-surface-container-low/70 flex items-center justify-between text-[11px] font-code text-on-surface-variant flex-shrink-0">
+      <footer className="h-7 px-4 border-t border-outline-variant/20 bg-surface-container-low/70 flex items-center justify-between text-[11px] font-code text-on-surface-variant flex-shrink-0">
         <div className="flex items-center gap-3">
           <span>
             WZ Node: <strong className="text-on-surface font-semibold">{selectedId}</strong>
           </span>
           <span>•</span>
           <span>
-            Package: <strong className="text-on-surface font-semibold">{category}</strong>
+            Package: <strong className="text-on-surface font-semibold">{effectiveCategory}</strong>
           </span>
         </div>
         <div>

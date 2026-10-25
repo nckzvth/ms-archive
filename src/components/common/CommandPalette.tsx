@@ -101,6 +101,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
 
   const getCategoryBadge = (cat: RegistryCategory) => {
     const labels: Record<RegistryCategory, string> = {
+      all: 'All',
       equips: 'Equip',
       use: 'Use',
       etc: 'Etc',

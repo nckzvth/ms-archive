@@ -1,4 +1,5 @@
 export type RegistryCategory =
+  | 'all'
   | 'equips'
   | 'use'
   | 'etc'

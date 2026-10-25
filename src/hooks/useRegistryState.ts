@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { RegistryCategory, BookmarkItem } from '../types';
 
 export interface RegistryState {
-  view: 'home' | 'workspace';
   region: string;
   version: string;
   category: RegistryCategory;
@@ -19,11 +18,6 @@ export interface RegistryState {
 export function useRegistryState() {
   const readUrlState = useCallback((): RegistryState => {
     const params = new URLSearchParams(window.location.search);
-    const viewParam = params.get('view');
-    const hasCategoryOrId = params.has('category') || params.has('id') || params.has('sub');
-    const view: 'home' | 'workspace' =
-      viewParam === 'workspace' ? 'workspace' : viewParam === 'home' ? 'home' : hasCategoryOrId ? 'workspace' : 'home';
-
     const category = (params.get('category') as RegistryCategory) || 'equips';
     const region = params.get('region') || 'MCW';
     const version = params.get('version') || '1';
@@ -38,7 +32,6 @@ export function useRegistryState() {
     const searchQuery = params.get('q') || '';
 
     return {
-      view,
       region,
       version,
       category,
@@ -69,21 +62,17 @@ export function useRegistryState() {
 
         debounceTimerRef.current = setTimeout(() => {
           const params = new URLSearchParams();
-          if (next.view === 'home') {
-            params.set('view', 'home');
-          } else {
-            if (next.region) params.set('region', next.region);
-            if (next.version) params.set('version', next.version);
-            if (next.category) params.set('category', next.category);
-            if (next.group) params.set('group', next.group);
-            if (next.subCategory) params.set('sub', next.subCategory);
-            if (next.selectedId) params.set('id', next.selectedId.toString());
-            if (next.activeTab && next.activeTab !== 'overview') params.set('tab', next.activeTab);
-            if (next.filterPill && next.filterPill !== 'All') params.set('filter', next.filterPill);
-            if (next.sortBy && next.sortBy !== 'name') params.set('sort', next.sortBy);
-            if (next.sortDirection && next.sortDirection !== 'asc') params.set('dir', next.sortDirection);
-            if (next.searchQuery) params.set('q', next.searchQuery);
-          }
+          if (next.region) params.set('region', next.region);
+          if (next.version) params.set('version', next.version);
+          if (next.category) params.set('category', next.category);
+          if (next.group) params.set('group', next.group);
+          if (next.subCategory) params.set('sub', next.subCategory);
+          if (next.selectedId) params.set('id', next.selectedId.toString());
+          if (next.activeTab && next.activeTab !== 'overview') params.set('tab', next.activeTab);
+          if (next.filterPill && next.filterPill !== 'All') params.set('filter', next.filterPill);
+          if (next.sortBy && next.sortBy !== 'name') params.set('sort', next.sortBy);
+          if (next.sortDirection && next.sortDirection !== 'asc') params.set('dir', next.sortDirection);
+          if (next.searchQuery) params.set('q', next.searchQuery);
 
           const queryStr = params.toString();
           const newUrl = queryStr ? `${window.location.pathname}?${queryStr}` : window.location.pathname;

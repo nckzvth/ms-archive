@@ -3,9 +3,6 @@ import { Search, Bookmark, PanelRightClose, PanelRightOpen, Archive, LayoutGrid,
 import { RegistryCategory, WzVersion } from '../../types';
 
 interface HeaderProps {
-  view: 'home' | 'workspace';
-  onNavigateHome: () => void;
-  onNavigateWorkspace: () => void;
   region: string;
   version: string;
   category: RegistryCategory;
@@ -19,9 +16,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  view,
-  onNavigateHome,
-  onNavigateWorkspace,
   region,
   version,
   category,
@@ -35,6 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const getWzPackageName = (cat: RegistryCategory): string => {
     switch (cat) {
+      case 'all':
+        return 'All Archives';
       case 'equips':
         return 'Character.wz';
       case 'use':
@@ -80,54 +76,16 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="w-2.5 h-2.5 rounded-full bg-outline-variant/70 hover:bg-emerald-400 transition-colors" />
         </div>
 
-        {/* Dynamic WZ Breadcrumbs / Home Logo */}
+        {/* Dynamic WZ Breadcrumbs */}
         <div className="flex items-center gap-space-xs text-on-surface-variant font-code text-code">
-          <button
-            onClick={onNavigateHome}
-            className="text-primary font-headline-sm flex items-center gap-1.5 hover:text-amber-600 transition-colors cursor-pointer"
-            title="Return to Archive Home & Search"
-          >
+          <span className="text-primary font-headline-sm flex items-center gap-1.5">
             <Archive className="w-3.5 h-3.5 text-amber-500" />
             <span className="font-semibold tracking-tight">MS//Archive</span>
-          </button>
+          </span>
           <span>/</span>
           <span className="text-on-surface font-medium">v{version}</span>
           <span>/</span>
-          {view === 'home' ? (
-            <span className="text-amber-600 font-medium">Search & Taxonomy Hub</span>
-          ) : (
-            <span className="text-on-surface">{getWzPackageName(category)}</span>
-          )}
-        </div>
-
-        <div className="h-3 w-px bg-surface-container-highest" />
-
-        {/* View Switcher Pill: Home vs Workspace */}
-        <div className="flex items-center p-0.5 bg-surface-container rounded-md border border-outline-variant/30">
-          <button
-            onClick={onNavigateHome}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-code transition-all cursor-pointer ${
-              view === 'home'
-                ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-xs'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-            title="Homepage with general search & category selectors"
-          >
-            <Home className="w-3 h-3" />
-            <span>Home Hub</span>
-          </button>
-          <button
-            onClick={onNavigateWorkspace}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-code transition-all cursor-pointer ${
-              view === 'workspace'
-                ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-xs'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-            title="Full 3-Pane Explorer Workspace"
-          >
-            <LayoutGrid className="w-3 h-3" />
-            <span>Workspace</span>
-          </button>
+          <span className="text-on-surface font-medium">{getWzPackageName(category)}</span>
         </div>
 
         <div className="h-3 w-px bg-surface-container-highest" />
