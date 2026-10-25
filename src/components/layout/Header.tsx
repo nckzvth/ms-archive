@@ -1,8 +1,11 @@
 import React from 'react';
-import { Search, Bookmark, PanelRightClose, PanelRightOpen, Archive } from 'lucide-react';
+import { Search, Bookmark, PanelRightClose, PanelRightOpen, Archive, LayoutGrid, Home } from 'lucide-react';
 import { RegistryCategory, WzVersion } from '../../types';
 
 interface HeaderProps {
+  view: 'home' | 'workspace';
+  onNavigateHome: () => void;
+  onNavigateWorkspace: () => void;
   region: string;
   version: string;
   category: RegistryCategory;
@@ -16,6 +19,9 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  view,
+  onNavigateHome,
+  onNavigateWorkspace,
   region,
   version,
   category,
@@ -65,25 +71,63 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="h-10 bg-surface/90 backdrop-blur-xl z-30 shadow-[0_1px_0_rgba(0,0,0,0.06)] flex items-center justify-between px-space-lg select-none flex-shrink-0 w-full border-b border-outline-variant/20">
-      {/* Left: Window controls and WZ Breadcrumbs */}
+      {/* Left: Window controls and Navigation Breadcrumbs */}
       <div className="flex items-center gap-space-md">
         {/* macOS window control dots */}
-        <div className="flex items-center gap-1.5 mr-2">
+        <div className="flex items-center gap-1.5 mr-1">
           <div className="w-2.5 h-2.5 rounded-full bg-outline-variant/70 hover:bg-error transition-colors" />
           <div className="w-2.5 h-2.5 rounded-full bg-outline-variant/70 hover:bg-amber-400 transition-colors" />
           <div className="w-2.5 h-2.5 rounded-full bg-outline-variant/70 hover:bg-emerald-400 transition-colors" />
         </div>
 
-        {/* Dynamic WZ Breadcrumbs */}
+        {/* Dynamic WZ Breadcrumbs / Home Logo */}
         <div className="flex items-center gap-space-xs text-on-surface-variant font-code text-code">
-          <span className="text-primary font-headline-sm flex items-center gap-1">
-            <Archive className="w-3.5 h-3.5" />
-            MS//Archive
-          </span>
+          <button
+            onClick={onNavigateHome}
+            className="text-primary font-headline-sm flex items-center gap-1.5 hover:text-amber-600 transition-colors cursor-pointer"
+            title="Return to Archive Home & Search"
+          >
+            <Archive className="w-3.5 h-3.5 text-amber-500" />
+            <span className="font-semibold tracking-tight">MS//Archive</span>
+          </button>
           <span>/</span>
           <span className="text-on-surface font-medium">v{version}</span>
           <span>/</span>
-          <span className="text-on-surface">{getWzPackageName(category)}</span>
+          {view === 'home' ? (
+            <span className="text-amber-600 font-medium">Search & Taxonomy Hub</span>
+          ) : (
+            <span className="text-on-surface">{getWzPackageName(category)}</span>
+          )}
+        </div>
+
+        <div className="h-3 w-px bg-surface-container-highest" />
+
+        {/* View Switcher Pill: Home vs Workspace */}
+        <div className="flex items-center p-0.5 bg-surface-container rounded-md border border-outline-variant/30">
+          <button
+            onClick={onNavigateHome}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-code transition-all cursor-pointer ${
+              view === 'home'
+                ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-xs'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+            title="Homepage with general search & category selectors"
+          >
+            <Home className="w-3 h-3" />
+            <span>Home Hub</span>
+          </button>
+          <button
+            onClick={onNavigateWorkspace}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-code transition-all cursor-pointer ${
+              view === 'workspace'
+                ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-xs'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+            title="Full 3-Pane Explorer Workspace"
+          >
+            <LayoutGrid className="w-3 h-3" />
+            <span>Workspace</span>
+          </button>
         </div>
 
         <div className="h-3 w-px bg-surface-container-highest" />

@@ -41,6 +41,22 @@ interface StreamFeedProps {
   isLoading: boolean;
 }
 
+export function getCategoryFilterPills(category: RegistryCategory): string[] {
+  if (category === 'equips') {
+    return ['All', 'War', 'Mag', 'Bow', 'Thf', 'Pir'];
+  }
+  if (category === 'monsters') {
+    return ['All', '1-30', '31-60', '61-99', '100+', 'Bosses'];
+  }
+  if (category === 'maps') {
+    return ['All', 'Towns', 'Victoria', 'Ossyria'];
+  }
+  if (category === 'quests') {
+    return ['All', '1-10', '11-20', '21-30', '31-45', '46-60', '61+'];
+  }
+  return ['All'];
+}
+
 export const StreamFeed: React.FC<StreamFeedProps> = ({
   category,
   subCategory,
@@ -87,7 +103,7 @@ export const StreamFeed: React.FC<StreamFeedProps> = ({
     if (!Array.isArray(items)) return [];
     let result = items.filter(Boolean);
 
-    const validPills = getFilterPills();
+    const validPills = getCategoryFilterPills(category);
     const effectiveFilterPill = validPills.includes(filterPill) ? filterPill : 'All';
 
     // 1. Contextual Filter Strip
@@ -197,23 +213,6 @@ export const StreamFeed: React.FC<StreamFeedProps> = ({
     overscan: 5,
   });
 
-  // Filter strip buttons according to category
-  const getFilterPills = () => {
-    if (category === 'equips') {
-      return ['All', 'War', 'Mag', 'Bow', 'Thf', 'Pir'];
-    }
-    if (category === 'monsters') {
-      return ['All', '1-30', '31-60', '61-99', '100+', 'Bosses'];
-    }
-    if (category === 'maps') {
-      return ['All', 'Towns', 'Victoria', 'Ossyria'];
-    }
-    if (category === 'quests') {
-      return ['All', '1-10', '11-20', '21-30', '31-45', '46-60', '61+'];
-    }
-    return ['All'];
-  };
-
   const getSortIcon = (col: string) => {
     if (sortBy !== col) return <ArrowUpDown className="w-3 h-3 text-outline opacity-50" />;
     return sortDirection === 'asc' ? (
@@ -260,10 +259,10 @@ export const StreamFeed: React.FC<StreamFeedProps> = ({
         </div>
 
         {/* Segmented Quick Class / Level Band Filter */}
-        {getFilterPills().length > 1 && (
+        {getCategoryFilterPills(category).length > 1 && (
           <div className="flex items-center p-0.5 bg-surface-container-low rounded border border-outline-variant/20 overflow-x-auto no-scrollbar">
-            {getFilterPills().map((pill) => {
-              const validPills = getFilterPills();
+            {getCategoryFilterPills(category).map((pill) => {
+              const validPills = getCategoryFilterPills(category);
               const effectivePill = validPills.includes(filterPill) ? filterPill : 'All';
               const isActive = effectivePill === pill;
               return (
